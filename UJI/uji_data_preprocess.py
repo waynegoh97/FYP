@@ -200,6 +200,30 @@ def generate_image(train_csv_dir, test_csv_dir, img_dim, save_dir, csv_dir, spli
             
     # print(unique_loc[][])
     
+def train_split(csv, csv_dir):
+    '''
+    Purpose: Split training dataset into unique building and floor
+
+    Parameters
+    ----------
+    csv : string
+        training dataset csv
+    csv_dir : string
+        directory of csv to be saved
+
+    Returns
+    -------
+    None.
+
+    '''
+    df = pd.read_csv(csv,header=0)
+    for bid in range(2):
+        for fid in range(4):
+            temp = df[(df["BUILDINGID"] == bid) & (df["FLOOR"] == fid)]
+            temp.to_csv(csv_dir+"b"+str(bid)+"f"+str(fid)+"_train.csv", index=False)
+    for fid in range(5):
+        temp = df[(df["BUILDINGID"] == 2) & (df["FLOOR"] == fid)]
+        temp.to_csv(csv_dir+"b2f"+str(fid)+"_train.csv", index=False)
         
 if __name__ == "__main__":
     
@@ -229,9 +253,13 @@ if __name__ == "__main__":
     generate_image(train_csv_dir, test_csv_dir, img_dim, img_save_dir, csv_dir, True) #for localisation
     generate_image(train_csv_dir, test_csv_dir, img_dim, img_save_dir, csv_dir, False) #for augmentation (as it should use all training dataset)
 
-    
-
-
+### for splitting training dataset
+# =============================================================================
+#     csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
+#     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/train_split/"
+#     train_split(csv,csv_dir)
+# 
+# =============================================================================
 
 
 
