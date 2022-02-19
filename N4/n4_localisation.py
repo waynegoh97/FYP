@@ -434,132 +434,105 @@ def result_compare_plot(result, keys, scenarios, title_name):
 
 
 if __name__ == '__main__':
-    ##### Parameters #####
-    ##### Code for single runs #####
-# =============================================================================
-#     batch_size = 32
-#     lr = 0.001 #test for 0.001, 0.0001, 0.0003
-#     epochs = 300 
-#     patience = 100 #old used 30
-#     state_name = "resnet18.pt"
-#     # save_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/results/'
-#     # train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_train_wgan_equal"
-#     # valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_valid"
-#     # test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_test"
-#     save_dir = '/home/wayne/wgan/results/'
-#     train_img_dir = "/home/wayne/wgan/uji_images/train_img/b0f0_train"
-#     valid_img_dir = "/home/wayne/wgan/uji_images/valid_img/b0f0_valid"
-#     test_img_dir = "/home/wayne/wgan/uji_images/test_img/b0f0_test"
-#     model = resnet18()
-#     ##### Normalize data input and output. Load data. #####
-#     trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
-#     train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
-#     predict_output, label = predict_result(state_name,model,testloader)
-#     result = prediction_error(predict_output, label)
-# =============================================================================
-    
-    
+
     ##### Code for multiple runs #####
     ##### Parameters #####
-    num_train = 5
-    batch_size = 32
-    
-    epochs = 300 
-    patience = 100 #old used 30
-    save_dir = '/home/wayne/N4/results/'
-    # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
-    model = resnet18()
-    ### 4 types of training data for each unique building and floor [e.g. b0f0_original, b0f0_wgan, b0f0_original_wgan, b0f0_mix]
 # =============================================================================
-#   Image directory structure
-# uji_images
-#     train_img > b0f0_train, b0f0_wgan, b0f0_original_wgan, b0f0_mix
-#     valid_img > b0f0_valid, b0f1_valid
-#     test_img > b0f0_test, b0f1_test
+#     num_train = 5
+#     batch_size = 32
+#     
+#     epochs = 300 
+#     patience = 100 #old used 30
+#     save_dir = '/home/wayne/N4/results/'
+#     # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
+#     model = resnet18()
+#     ### 4 types of training data for each unique building and floor [e.g. b0f0_original, b0f0_wgan, b0f0_original_wgan, b0f0_mix]
+# # =============================================================================
+# #   Image directory structure
+# # uji_images
+# #     train_img > b0f0_train, b0f0_wgan, b0f0_original_wgan, b0f0_mix
+# #     valid_img > b0f0_valid, b0f1_valid
+# #     test_img > b0f0_test, b0f1_test
+# # =============================================================================
+# # =============================================================================
+# #     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
+# #     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
+# #     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
+# # =============================================================================
+#     train_dir = "/home/wayne/N4/images/train_img/"
+#     valid_dir = "/home/wayne/N4/images/valid_img/"
+#     test_dir = "/home/wayne/N4/images/test_img/"
+#     
+# # =============================================================================
+# #     train_img_dir = os.listdir(train_dir)
+# #     valid_img_dir = os.listdir(valid_dir)
+# #     test_img_dir = os.listdir(test_dir)
+# # =============================================================================
+#     train_img_dir ='trainingData_F1Sa_train' #'trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb'
+#     valid_img_dir = 'trainingData_F1Sa_valid'
+#     test_img_dir = 'trainingData_F1Sa_test'
+#     lr = 0.001 #0.0001, 0.0003
+#     
+#     for i in range(num_train):
+#         state_name = str(lr)+'_'+ str(i)+'_'+train_img_dir+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
+#      
+#         trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir, 
+#                                                                         valid_dir + valid_img_dir, 
+#                                                                         test_dir + test_img_dir, batch_size)
+#         
+#         train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
 # =============================================================================
-# =============================================================================
-#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
-#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
-#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
-# =============================================================================
-    train_dir = "/home/wayne/N4/images/train_img/"
-    valid_dir = "/home/wayne/N4/images/valid_img/"
-    test_dir = "/home/wayne/N4/images/test_img/"
-    
-# =============================================================================
-#     train_img_dir = os.listdir(train_dir)
-#     valid_img_dir = os.listdir(valid_dir)
-#     test_img_dir = os.listdir(test_dir)
-# =============================================================================
-    train_img_dir ='trainingData_F1Sa_train' #'trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb'
-    valid_img_dir = 'trainingData_F1Sa_valid'
-    test_img_dir = 'trainingData_F1Sa_test'
-    lr = 0.001 #0.0001, 0.0003
-    
-    for i in range(num_train):
-        state_name = str(lr)+'_'+ str(i)+'_'+train_img_dir+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
-     
-        trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir, 
-                                                                        valid_dir + valid_img_dir, 
-                                                                        test_dir + test_img_dir, batch_size)
-        
-        train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
 
 
     
     ##### Prediction Error #####
-# =============================================================================
-#     num_train = 5
-#     batch_size = 24 #must check from test folder with smallest number of labels
-#     result = [] ### order: mean, min, max, var
-#     state_details = []### order: lr, train_num, fid, case
-#     pred = []
-#     
-#     lr = [0.001, 0.0001, 0.0003]
-#     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-#     # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
-#     save_dir = "/home/wayne/ng/results/"
-#     floor_id = ['floor-1','floor1','floor2']
-# 
-#     # trainloader, validloader, testloader = normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size)     
-# 
-#     train_dir = "/home/wayne/ng/images/train_img/"
-#     valid_dir = "/home/wayne/ng/images/valid_img/"
-#     test_dir = "/home/wayne/ng/images/test_img/"
-#     # train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_img/"
-#     # valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/valid_img/"
-#     # test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/test_img/"
-#     #solve the testloader
-#     next_list = 0
-#     curr_index = 0
-# 
-#     model = resnet18()
-#     ### csv file: lr, train_num, fid, case, mean, min, max, var
-#     for i in lr:
-#         for t in range(num_train):
-#             for fid in floor_id:
-#                 print(fid)
-#                 curr_test = test_dir + fid + "_test"
-#                 curr_valid = valid_dir + fid + "_valid"
-#                 for case in case_name:
-#                     curr_train = train_dir + fid + case
-#           
-#                     _, train_label, _ = data_and_label(curr_train)
-#                     origin = np.amin(train_label,axis=0)
-#                     _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
-#                     state_name = str(i)+'_'+str(t)+'_'+fid+case+'.pt'
-#                     predict_output, label = predict_result(state_name, model, testloader, save_dir)
-#                     for size in range(len(predict_output)):
-#                         pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
-#                     result.append(prediction_error(predict_output, label))
-#                     state_details.append([i, t, fid, case])
-#     df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
-#     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
-#     pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
-# 
-#     df.to_csv('/home/wayne/ng/ng_results.csv', index=False)
-#     pred_df.to_csv('/home/wayne/ng/pred.csv', index=False)
-# =============================================================================
+    num_train = 5
+    batch_size = 24 #must check from test folder with smallest number of labels
+    result = [] ### order: mean, min, max, var
+    state_details = []### order: lr, train_num, fid, case
+    pred = []
+    
+    lr = [0.001, 0.0001, 0.0003]
+    case_name = ['_train', '_wgan', '_original_wgan', '_mix']
+    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
+    save_dir = "/home/wayne/N4/results/"
+    floor_id = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
+
+    # trainloader, validloader, testloader = normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size)     
+
+    train_dir = "/home/wayne/N4/images/train_img/"
+    valid_dir = "/home/wayne/N4/images/valid_img/"
+    test_dir = "/home/wayne/N4/images/test_img/"
+    # train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_img/"
+    # valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/valid_img/"
+    # test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/test_img/"
+
+    model = resnet18()
+    ### csv file: lr, train_num, fid, case, mean, min, max, var
+    for i in lr:
+        for t in range(num_train):
+            for fid in floor_id:
+                print(fid)
+                curr_test = test_dir + fid + "_test"
+                curr_valid = valid_dir + fid + "_valid"
+                for case in case_name:
+                    curr_train = train_dir + fid + case
+          
+                    _, train_label, _ = data_and_label(curr_train)
+                    origin = np.amin(train_label,axis=0)
+                    _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
+                    state_name = str(i)+'_'+str(t)+'_'+fid+case+'.pt'
+                    predict_output, label = predict_result(state_name, model, testloader, save_dir)
+                    for size in range(len(predict_output)):
+                        pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+                    result.append(prediction_error(predict_output, label))
+                    state_details.append([i, t, fid, case])
+    df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
+    df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
+    pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
+
+    df.to_csv('/home/wayne/N4/n4_results.csv', index=False)
+    pred_df.to_csv('/home/wayne/N4/pred.csv', index=False)
     
   ### Run this first to combine ED of all floors together ###
 # =============================================================================
