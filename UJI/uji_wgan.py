@@ -6,9 +6,10 @@ import torch
 import torch.optim as optim
 import shutil
 import random
+import time
 
 import sys
-sys.path.append("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/")
+# sys.path.append("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/UJI/")
 from util import *
 
 # For 23x23 images
@@ -150,8 +151,8 @@ def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_ep
 #     for i in range(len(label_dir)):
 #         dataloader = load_by_label(label_dir[i], batch)
 # =============================================================================
-    gen = NG_Generator(latent, img_channel, gen_layer).to(device) 
-    critic = NG_Discriminator(img_channel, critic_layer).to(device)
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device) 
+    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
     initialize_weights(gen)
     initialize_weights(critic)
     
@@ -214,25 +215,6 @@ def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_ep
     plt.title('Critic plot')
     plt.legend(frameon=False)
     
-def generate_wgan_img(num_iter, model_state_dir, data_dir, latent, gen_layer, img_channel, px, my_dpi, save_dir):
-    #generate wgan-gp images for after training
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    gen = NG_Generator(latent, img_channel, gen_layer).to(device) 
-    gen.load_state_dict(torch.load(model_state_dir))
-    gen.eval()
-    
-    # label_dir = label_directory(data_dir)
-    _, mean, std, _, _ = load_by_label(data_dir, 1)
-    unorm = UnNormalize(mean = mean, std = std)
-    curr_label = data_dir.split('\\')
-    directory = save_dir+'/'+str(curr_label[-1])
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    for i in range(num_iter):
-        noise = torch.randn(1, latent, 1, 1).to(device)
-        fake = gen(noise).detach().cpu()
-        # imshow(unorm(fake))
-        imsave(unorm(fake), save_dir+'/'+str(curr_label[-1])+'/'+str(i)+'.png', px, my_dpi)
         
 def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir, 
                      lr, batch, num_epoch, img_dim, img_channel, latent, critic_layer, gen_layer, critic_iter, gradient_p):
@@ -277,8 +259,8 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
     dataloader, mean, std, _, _= load_by_label(data_dir, batch)
     unorm = UnNormalize(mean = mean, std = std)
         
-    gen = NG_Generator(latent, img_channel, gen_layer).to(device)
-    critic = NG_Discriminator(img_channel, critic_layer).to(device)
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
+    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
     gen.load_state_dict(torch.load(gen_model_state))
     critic.load_state_dict(torch.load(disc_model_state))
     
@@ -289,7 +271,7 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
     critic.train()
     critic_loss = []
 
-    
+    print("Starting")
     for epoch in range(num_epoch):
         # Target labels not needed
         gen.train()
@@ -319,18 +301,19 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
          
   
             
-        print(
-            "[Epoch: %d/%d] [Batch: %d/%d] [G loss: %f] [C loss: %f]"
-            % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen.item(), loss_critic.item())
-        )
-        critic_loss.append(-loss_critic.item())
+        # print(
+        #     "[Epoch: %d/%d] [Batch: %d/%d] [G loss: %f] [C loss: %f]"
+        #     % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen.detach(), loss_critic.detach())
+        # )
+        critic_loss.append(-loss_critic.detach())
                         
     torch.save(gen.state_dict(), save_state)
+    print("Ending")
     
 def generate_wgan_img(num_iter, model_state_dir, data_dir, latent, gen_layer, img_channel, px, my_dpi, save_dir):
     #generate wgan-gp images for after training
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    gen = NG_Generator(latent, img_channel, gen_layer).to(device)
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
     gen.load_state_dict(torch.load(model_state_dir))
     gen.eval()
     
@@ -409,11 +392,11 @@ if __name__ == "__main__":
 #     summary(gen, (100,1,1))
 # =============================================================================
 # =============================================================================
-# 
+#   2. WGAN-GP training for most sample
 # =============================================================================
     LEARNING_RATE =0.001 #0.001 (mnist)
     BATCH_SIZE = 4 #32 (mnist), 8 for wgan-gp uji
-    IMAGE_SIZE = 19
+    IMAGE_SIZE = 23
     CHANNELS_IMG = 1
     Z_DIM = 100
     NUM_EPOCHS = 1000
@@ -424,50 +407,58 @@ if __name__ == "__main__":
     num_gen = 150
     my_dpi = 96 # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
 # =============================================================================
-#     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/most_sample/' #for most labels
-#     gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/gen_wgangpUJI-1000-0_001_4.pt'
-#     disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/disc_wgangpUJI-1000-0_001_4.pt'
+#     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/most_sample/' #for most labels
+#     gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/dirichlet_wgan/gen_most_sample.pt'
+#     disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/dirichlet_wgan/disc_most_sample.pt'
 # =============================================================================
-    gen_saved_state = '/home/wayne/ng/gen_wgangpUJI-1000-0_001_4.pt'
-    disc_saved_state = '/home/wayne/ng/disc_wgangpUJI-1000-0_001_4.pt'
+    gen_saved_state = '/home/wayne/uji/gen_most_sample.pt'
+    disc_saved_state = '/home/wayne/uji/disc_most_sample.pt'
+    
 # =============================================================================
 #     wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
 #             FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
 # =============================================================================
+    
 # =============================================================================
-#     unique_loc = ['floor2']#,'floor1','floor2']
-#     for loc in range(len(unique_loc)):
-#         data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_only/'+unique_loc[loc]
-#         gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/wgan/'+unique_loc[loc]
-#         saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/wgan_model_states/'+unique_loc[loc]
-# # =============================================================================
-# #         data_dir = '/home/wayne/ng/images/train_only/'+unique_loc[loc]
-# #         gen_img_dir = '/home/wayne/ng/images/wgan/'+unique_loc[loc]
-# #         save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]
-# # =============================================================================
-#         
-#         if not os.path.exists(gen_img_dir):
-#             os.makedirs(gen_img_dir)
-#         # if not os.path.exists(save_state):
-#         #     os.makedirs(save_state)
-#         NUM_EPOCHS = 500
-#         label_dir = label_directory(data_dir)
-# 
-#         for i in range(197,407):#len(label_dir)):    
-#             curr_label = label_dir[i].split('\\')
-#             # save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]+'/'+str(curr_label[-1])+'.pt'
-#             save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
-#     
-#             # wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], dataset, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, 
-#             #                  CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-#             generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
-#===========================================================================
+#     3. WGAN-GP pre-train for each RP
 # =============================================================================
-#     save_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/wgan_model_states/floor2/30040.490428222794_30306.64760825761.pt'
-#     label_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_only/floor2/30040.490428222794_30306.64760825761'
-#     generate_wgan_img(150, save_state, label_dir, 100, 64, 1, 19, my_dpi, gen_img_dir)    
+    unique_loc = "b0f0" 
+
 # =============================================================================
-    split_img()
+#     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/ori_dirich/'+unique_loc
+#     gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/dirichlet_wgan/'+unique_loc
+#     saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/dirichlet_wgan/'+unique_loc
+# =============================================================================
+    
+    data_dir = '/home/wayne/uji/images/ori_dirich/'+unique_loc[loc]
+    # gen_img_dir = '/home/wayne/uji/images/dirich_wgan/'+unique_loc[loc]
+    save_state = '/home/wayne/uji/dirich_wgan_model_state/'+unique_loc[loc]
+        
+    # if not os.path.exists(gen_img_dir):
+    #     os.makedirs(gen_img_dir)
+    if not os.path.exists(save_state):
+        os.makedirs(save_state)
+    NUM_EPOCHS = 500
+    label_dir = label_directory(data_dir)
+    
+    time_keeper = []
+    for i in range(len(label_dir)):
+        start = time.perf_counter()
+        # curr_label = label_dir[i].split('\\') #for windows pc
+        curr_label = label_dir[i].split('/') #for linux 
+        # save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]+'/'+str(curr_label[-1])+'.pt'
+        save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
+
+        wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, 
+                          CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+        end = time.perf_counter()
+        time_keeper.append([curr_label[-1], end-start])
+    df = pd.DataFrame(time_keeper, columns = ["Labels", "Execution"])
+    df.to_csv("/home/wayne/uji/dirich_wgan_model_state/"+unique_loc+"_runtime.csv",index=False)
+    # df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/dirichlet_wgan/'+unique_loc+"_runtime.csv", index=False)
+        ### Generate image from saved model state ###
+        # generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
+
 
 
 
