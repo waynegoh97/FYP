@@ -486,53 +486,55 @@ if __name__ == '__main__':
 
     
     ##### Prediction Error #####
-    num_train = 5
-    batch_size = 24 #must check from test folder with smallest number of labels
-    result = [] ### order: mean, min, max, var
-    state_details = []### order: lr, train_num, fid, case
-    pred = []
-    
-    lr = [0.001, 0.0001, 0.0003]
-    case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
-    save_dir = "/home/wayne/N4/results/"
-    floor_id = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
-
-    # trainloader, validloader, testloader = normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size)     
-
-    train_dir = "/home/wayne/N4/images/train_img/"
-    valid_dir = "/home/wayne/N4/images/valid_img/"
-    test_dir = "/home/wayne/N4/images/test_img/"
-    # train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_img/"
-    # valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/valid_img/"
-    # test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/test_img/"
-
-    model = resnet18()
-    ### csv file: lr, train_num, fid, case, mean, min, max, var
-    for i in lr:
-        for t in range(num_train):
-            for fid in floor_id:
-                print(fid)
-                curr_test = test_dir + fid + "_test"
-                curr_valid = valid_dir + fid + "_valid"
-                for case in case_name:
-                    curr_train = train_dir + fid + case
-          
-                    _, train_label, _ = data_and_label(curr_train)
-                    origin = np.amin(train_label,axis=0)
-                    _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
-                    state_name = str(i)+'_'+str(t)+'_'+fid+case+'.pt'
-                    predict_output, label = predict_result(state_name, model, testloader, save_dir)
-                    for size in range(len(predict_output)):
-                        pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
-                    result.append(prediction_error(predict_output, label))
-                    state_details.append([i, t, fid, case])
-    df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
-    df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
-    pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
-
-    df.to_csv('/home/wayne/N4/n4_results.csv', index=False)
-    pred_df.to_csv('/home/wayne/N4/pred.csv', index=False)
+# =============================================================================
+#     num_train = 5
+#     batch_size = 24 #must check from test folder with smallest number of labels
+#     result = [] ### order: mean, min, max, var
+#     state_details = []### order: lr, train_num, fid, case
+#     pred = []
+#     
+#     lr = [0.001, 0.0001, 0.0003]
+#     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
+#     # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
+#     save_dir = "/home/wayne/N4/results/"
+#     floor_id = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
+# 
+#     # trainloader, validloader, testloader = normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size)     
+# 
+#     train_dir = "/home/wayne/N4/images/train_img/"
+#     valid_dir = "/home/wayne/N4/images/valid_img/"
+#     test_dir = "/home/wayne/N4/images/test_img/"
+#     # train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_img/"
+#     # valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/valid_img/"
+#     # test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/test_img/"
+# 
+#     model = resnet18()
+#     ### csv file: lr, train_num, fid, case, mean, min, max, var
+#     for i in lr:
+#         for t in range(num_train):
+#             for fid in floor_id:
+#                 print(fid)
+#                 curr_test = test_dir + fid + "_test"
+#                 curr_valid = valid_dir + fid + "_valid"
+#                 for case in case_name:
+#                     curr_train = train_dir + fid + case
+#           
+#                     _, train_label, _ = data_and_label(curr_train)
+#                     origin = np.amin(train_label,axis=0)
+#                     _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
+#                     state_name = str(i)+'_'+str(t)+'_'+fid+case+'.pt'
+#                     predict_output, label = predict_result(state_name, model, testloader, save_dir)
+#                     for size in range(len(predict_output)):
+#                         pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+#                     result.append(prediction_error(predict_output, label))
+#                     state_details.append([i, t, fid, case])
+#     df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
+#     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
+#     pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
+# 
+#     df.to_csv('/home/wayne/N4/n4_results.csv', index=False)
+#     pred_df.to_csv('/home/wayne/N4/pred.csv', index=False)
+# =============================================================================
     
   ### Run this first to combine ED of all floors together ###
 # =============================================================================
@@ -547,9 +549,9 @@ if __name__ == '__main__':
 #     lr = [0.001, 0.0001, 0.0003]
 #     num_times = 5
 #     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-#     floor_id = ['floor-1','floor1','floor2']
-#     result_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/results/ng_combined_result.csv"
-#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_results.csv", header=0)
+#     floor_id = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
+#     result_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/results/n4_combined_result.csv"
+#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/results/n4_results.csv", header=0)
 #     #need to combine same lr, num and case name, then divide by total combined
 #     building_df = pd.DataFrame()
 #     for i in floor_id:
@@ -570,31 +572,30 @@ if __name__ == '__main__':
 #     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(temp_avg)
 #     df.to_csv(result_dir, index =False)
 # =============================================================================
-# =============================================================================
-#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/results/ng_result.csv", header = 0)
-#     bid = "Building 2"
-#     lr = [0.001, 0.0001, 0.0003]
-#     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-#     scenarios = ['_avg', '_min', '_max', '_var']
-#     plot_dict = {}
-#     
-#     for l in lr:
-#         for case in case_name:
-#             selected_df = df[(df['LR'] == l) & (df['CASE'] == case)]
-#     
-#             plot_dict[str(l)+case+scenarios[0]] = selected_df['MEAN'].tolist()
-#             plot_dict[str(l)+case+scenarios[1]] = selected_df['MIN'].tolist()
-#             plot_dict[str(l)+case+scenarios[2]] = selected_df['MAX'].tolist()
-#             plot_dict[str(l)+case+scenarios[3]] = selected_df['VAR'].tolist()
-#     
-#     for l in lr:
-#         dict_keys = []
-#         for sc in scenarios:
-#             for case in case_name:
-#                 dict_keys.append(str(l)+case+sc)
-#         result_compare_plot(plot_dict, dict_keys, scenarios, bid)
-# 
-# =============================================================================
+    df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/results/n4_results.csv", header = 0)
+    df = df[df["FID"] == 'trainingData_F2Sb']
+    bid = "N4"
+    lr = [0.001, 0.0001, 0.0003]
+    case_name = ['_train', '_wgan', '_original_wgan', '_mix']
+    scenarios = ['_avg', '_min', '_max', '_var']
+    plot_dict = {}
+    
+    for l in lr:
+        for case in case_name:
+            selected_df = df[(df['LR'] == l) & (df['CASE'] == case)]
+    
+            plot_dict[str(l)+case+scenarios[0]] = selected_df['MEAN'].tolist()
+            plot_dict[str(l)+case+scenarios[1]] = selected_df['MIN'].tolist()
+            plot_dict[str(l)+case+scenarios[2]] = selected_df['MAX'].tolist()
+            plot_dict[str(l)+case+scenarios[3]] = selected_df['VAR'].tolist()
+    
+    for l in lr:
+        dict_keys = []
+        for sc in scenarios:
+            for case in case_name:
+                dict_keys.append(str(l)+case+sc)
+        result_compare_plot(plot_dict, dict_keys, scenarios, bid)
+
 
                 
     

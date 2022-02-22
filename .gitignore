@@ -4,3 +4,7 @@ UJI/uji_data_preprocess.py
 *.py
 N4/n4_localisation.py
 N4/n4_localisation.py
+N4/n4_localisation.py
+NG/ng_localisation.py
+UJI/uji_data_preprocess.py
+UJI/uji_wgan.py
