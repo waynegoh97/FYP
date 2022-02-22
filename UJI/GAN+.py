@@ -10,20 +10,25 @@ from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
 import math
+import os
+import torchvision
+import matplotlib.pyplot as plt
 torch.manual_seed(0) # Set for testing purposes, please do not change!
 
 
-
-
-def find_gan_performance(act_img, gan_img):
-    sol = 0
-    for i in range(len(act_img)):
-        temp = abs(act_img[i] - gan_img[i])
-        sol+=temp
-    return sol
-
-
-
+def imsave(imgs, save_dir, px, my_dpi):
+    #save images according to defined pixel
+    imgs = torchvision.utils.make_grid(imgs, normalize=False)
+    npimgs = imgs.numpy()
+    fig = plt.figure(figsize = (px/my_dpi,px/my_dpi), dpi=my_dpi, frameon = False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # plt.imsave('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/test.png',np.transpose(npimgs, (1,2,0)), cmap='gray')
+    plt.imshow(np.transpose(npimgs, (1,2,0)), cmap = "Greys_r")
+    fig.savefig(save_dir, dpi=my_dpi)
+    plt.close(fig)
+    
 # UNQ_C1 (UNIQUE CELL IDENTIFIER, DO NOT EDIT)
 # GRADED FUNCTION: get_generator_block
 def get_generator_block(input_dim, output_dim):
@@ -279,126 +284,45 @@ def rpreprocess(x):
             x[i]=-110.0
     return x
 
-def find_building_min(csv, bid):
-    '''
-    Purpose: Find the minimum coordinate for the building
 
-    Parameters
-    ----------
-    csv : string
-        csv file
-    bid : int
-        building id
 
-    Returns
-    -------
-    bid_min : list
-        list containing the minimum coordinate [latitude, longitude]
-
-    '''
-    df = pd.read_csv(csv, header=0)
-    temp = df[df['BUILDINGID'] == bid]
-    unique = temp.groupby(["LATITUDE","LONGITUDE"]).size().reset_index().rename(columns={0:'count'})
-    unique = np.array(unique.iloc[:,:2])
-    bid_min = np.amin(unique, axis=0).tolist()
-    return bid_min
-
-def build_rss_images(data,csv):
-    new_data = []
-    all_data = pd.read_csv(csv, header=0)
-    all_data = np.array(all_data.iloc[:,:520])
-    sample_records = np.transpose(np.asarray([all_data[data[0]][0:520]]))
-
-    for j in range(1, 10):
-        sample_records = np.append(sample_records, np.transpose(np.asarray([all_data[data[j]][0:520]])), axis=1)
-
-    new_data.append(sample_records)
-
-    new_data = np.asarray(new_data)
-    new_data[new_data == 100] = -110
-    return new_data
-
-def get_cell_center_lon_lat(data_cells, min_lat, min_lon):
-    cells_centers_lon_lat = []
-
-    cell_dimension = 3
-
-    row = float(data_cells[0])
-    col = float(data_cells[1])
-
-    # get the top left point of the cell square
-    x1 = min_lon + cell_dimension * col
-    y1 = min_lat + cell_dimension * row
-
-    cell_center_x = x1 + cell_dimension / 2
-    cell_center_y = y1 + cell_dimension / 2
-    cells_centers_lon_lat.append(np.asarray([cell_center_x, cell_center_y]))
-
-    cells_centers_lon_lat = np.asarray(cells_centers_lon_lat)
-
-    return cells_centers_lon_lat
-# =============================================================================
-#     sample_records = np.transpose(np.asarray([all_data[data[0]][0:520]]))
-# 
-#     for j in range(1, 10):
-#         sample_records = np.append(sample_records, np.transpose(np.asarray([all_data[data[j]][0:520]])), axis=1)
-# 
-#     new_data.append(sample_records)
-# 
-#     new_data = np.asarray(new_data)
-#     new_data[new_data == 100] = -110
-#     return new_data
-# =============================================================================
-
-if __name__ == "__main__":
-# =============================================================================
-#     Dirichlet augmentation
-# =============================================================================
-    ### Input parameters ###
-    csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
-    bid = [0,1,2]
-    
-    #Find minimum coordinates for each building
-    # min_coord = []
-    # for i in bid:
-    #     min_coord.append(find_building_min(csv, i))
-    
-    ### Input parameters ###
-    fid = ['b2f4']#, 'b2f1', 'b2f2', 'b2f3', 'b2f4'] #'b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3',
-    csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/train_split/"
-    
+def dirichlet_generate(csv_dir, fid, save_dir):
     #store dictionary contains coordinates (latitude, longitude) as keys and rssi data as values (according to the number of samples belonging to coordinate) e.g. {(-7345.345, 4328596): [[AP0 ... AP520],[AP0 ... AP520]]}
     store = {}
-    for i in fid:
-        train_df = pd.read_csv(csv_dir+i+"_train.csv",header=0)
-        train_input = np.array(train_df.iloc[:,:520])
-        train_label = np.array(train_df.iloc[:,520:522])
-        for j in range(len(train_input)): 
-            k = train_label[j].tolist()
-            v = train_input[j].tolist()
-        
-            if tuple(k) in store:
-                store[tuple(k)].append(v)
-            else:
-                store[tuple(k)] = [v]
-# =============================================================================
-#   Add a dict that stores number of dirich samples needed for each RP, then subtract from the df
-# =============================================================================
-    ### Total dirichlet needed = 75 - original images, another 75 images is generated by GAN+, with a total of 150 images for localisation ###
-    tempim = []
-    templb = []
 
+    train_df = pd.read_csv(csv_dir+fid+"_train.csv",header=0)
+    train_input = np.array(train_df.iloc[:,:520])
+    train_label = np.array(train_df.iloc[:,520:522])
+    for j in range(len(train_input)): 
+        k = train_label[j].tolist()
+        v = train_input[j].tolist()
+    
+        if tuple(k) in store:
+            store[tuple(k)].append(v)
+        else:
+            store[tuple(k)] = [v]
+
+    ### Total dirichlet needed = 75 - original images, another 75 images is generated by GAN+, with a total of 150 images for localisation ###
+    tempim = [] # contains [[[AP0...AP520] for N samples], [[AP0...AP520] for N samples]]]
+    templb = [] # contains [[longitude,latitude],[longitude,latitude]]
+    dirich_needed = []
+    drop_key =[]
+    count=0
+    ### np.random.dirichlet takes N samples weights, where N is the total number of samples in RP. 
+    ## N Dirichlet distribution adds up to 1. 
     for k in store.keys(): #number of unique RP
         #Just need 75 samples 
         if (len(store[k]) <= 75) & (len(store[k]) != 1):
             sample_size = len(store[k])
-            dirich_needed = 75 - sample_size
+            dirich_needed.append(75 - sample_size)
+
             #randomly pick samples for dirichlet
             im_new  = [[0 for i in range(sample_size)] for j in range(520)]
             curr_rp_samples = np.array(store[k])
             curr_rp_samples[curr_rp_samples==100] = -110
             curr_rp_samples = curr_rp_samples.T
-            for gen in range(math.ceil(dirich_needed/sample_size)):
+            #generate images according to dirichlet needed (contains excess)
+            for gen in range(math.ceil(dirich_needed[count]/sample_size)):
                 for s in range(sample_size):
                     weight = np.random.dirichlet(np.ones(sample_size),size=1)
                     for ap in range(520):
@@ -408,189 +332,346 @@ if __name__ == "__main__":
                 
                 tempim.append((np.array(im_new).T).tolist())
                 templb.append([k[0],k[1]])
+            count+=1
+        else:
+            drop_key.append(k)
     
-    #Create df
+    if drop_key:
+        for k in range(len(drop_key)):
+            del store[drop_key[k]]
+    
     #Create column names
     col = ["AP"+str(i) for i in range(1,521)]
     df = pd.DataFrame(tempim[0], columns= col)
-    df["LATITUDE"] = templb[0][0]
-    df["LONGITUDE"] = templb[0][1]
+    df["LATITUDE"] = templb[0][1]
+    df["LONGITUDE"] = templb[0][0]
     for i in range(1,len(tempim)):
         df2 = pd.DataFrame(tempim[i], columns= col)
-        df2["LATITUDE"] = templb[i][0]
-        df2["LONGITUDE"] = templb[i][1]
+        df2["LATITUDE"] = templb[i][1]
+        df2["LONGITUDE"] = templb[i][0]
         df=df.append(df2,ignore_index=True)
         
-    df.to_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet/b2f4.csv",index=False)
+    #remove excess dirichlet generated
+    col.append("LATITUDE")
+    col.append("LONGITUDE")
+    new_df = pd.DataFrame(columns = col)
+    count=0
+    for key in store.keys():
+        tdf = df[(df["LATITUDE"] == key[1]) & (df["LONGITUDE"] == key[0])]
+        tdf = tdf.drop(tdf.index[range(len(tdf)-dirich_needed[count])])
+        new_df = new_df.append(tdf,ignore_index=True)
+        count+=1
+        
+    new_df.to_csv(save_dir + fid+".csv",index=False)
+
+
+def train_most_sample():
+    df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv",header=0)
+    df = df.replace(100,-110)
+    df = df[(df["BUILDINGID"] == 1) & (df["FLOOR"] == 0)]
+    training_data_csv_in = np.array(df.iloc[:,:520])
+    training_data_csv_lb = np.array(df.iloc[:,520:522])
     
+    if torch.cuda.is_available():
+        training_data_csv_in = torch.from_numpy(training_data_csv_in).cuda()
+        training_data_csv_lb = torch.from_numpy(training_data_csv_lb).cuda()
+    
+    store={}
+    for i in range(len(training_data_csv_in)): 
+        k = training_data_csv_lb[i].tolist()
+        v = training_data_csv_in[i].tolist()
+    
+        if tuple(k) in store:
+    
+            store[tuple(k)].append(v)
+        else:
+            store[tuple(k)] = [v]
+    gen_loss = False
+    criterion = nn.BCEWithLogitsLoss()
+    n_epochs = 1000
+    z_dim = 10
+    lr = 0.00001
+    device = 'cuda'
+    # Load MNIST dataset as tensor
+
+    gen = Generator(z_dim).to(device)
+    gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
+    disc = Discriminator().to(device) 
+    disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
+
+    if torch.cuda.is_available():
+        gen = gen.cuda()
+        disc = disc.cuda()
+
+        
+    val = store[(-7445.557873841375,4864826.589670561)]
+    store_in = []
+    for v in val:
+        store_in.append(np.asarray(v))
+    tensor_store_val = torch.Tensor(store_in).cuda()
+  
+###
+    dataloader = DataLoader(tensor_store_val, batch_size=4)
+    
+    gen_save_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/gen_gan+_most_sample.pt"
+    disc_save_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/disc_gan+_most_sample.pt"
+    
+    for epoch in range(n_epochs):
+    
+      # Dataloader returns the batches
+        for real in dataloader:
+    
+            if torch.cuda.is_available():
+                real = real.cuda()
+    
+            cur_batch_size = len(real)
+            
+            if cur_batch_size != 4:
+                continue
+        
+        # Flatten the batch of real images from the dataset
+            real_b = real.view(cur_batch_size, -1).to(device)
+            if torch.cuda.is_available():
+                real_b = real_b.cuda()
+  
+            real = preprocess(real_b)
+  
+            if torch.cuda.is_available():
+                real = real.cuda()
+        ### Update discriminator ###
+        # Zero out the gradients before backpropagation
+            disc_opt.zero_grad()
+  
+        # Calculate discriminator loss
+            disc_loss = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device)
+  
+        # Update gradients
+            disc_loss.backward(retain_graph=True)
+  
+        # Update optimizer
+            disc_opt.step()
+        
+            gen_opt.zero_grad()
+            gen_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device)
+            gen_loss.backward(retain_graph=True)
+            gen_opt.step()
+  
+    torch.save(gen.state_dict(), gen_save_state)
+    torch.save(disc.state_dict(), disc_save_state)
+
+def gan_pretrained(train_csv_dir, dirich_csv_dir, fid, bid, gen_state, disc_state, z_dim, lr, n_epochs):
+    df = pd.read_csv(train_csv_dir,header=0)
+    df = df.replace(100,-110)
+    df = df[(df["BUILDINGID"] == bid) & (df["FLOOR"] == fid)].iloc[:,:522]
+    col = ["AP"+str(i) for i in range(1,521)]
+    col.append("LONGITUDE")
+    col.append("LATITUDE")
+    df.columns = col
+    dirich = pd.read_csv(dirich_csv_dir,header=0)
+    df = df.append(dirich,ignore_index=True)
+    training_data_csv_in = np.array(df.iloc[:,:520])
+    training_data_csv_lb = np.array(df.iloc[:,520:522])
+
+    if torch.cuda.is_available():
+        training_data_csv_in = torch.from_numpy(training_data_csv_in).cuda()
+        training_data_csv_lb = torch.from_numpy(training_data_csv_lb).cuda()
+    
+    count = 1
+    store={}
+    for i in range(len(training_data_csv_in)): 
+        k = training_data_csv_lb[i].tolist()
+        v = training_data_csv_in[i].tolist()
+    
+        if tuple(k) in store:
+    
+            store[tuple(k)].append(v)
+        else:
+            store[tuple(k)] = [v]
+    print("Size of unique RP: ", len(store.keys()))
+    for unique in store.keys():
+     
+        print("Training {}/{}: ".format(count,len(store.keys())))
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        gen = Generator(z_dim).to(device)
+        disc = Discriminator().to(device)
+        gen.load_state_dict(torch.load(gen_state))
+        disc.load_state_dict(torch.load(disc_state))
+        
+            
+        gen_loss = False
+        criterion = nn.BCEWithLogitsLoss()
+        # Load MNIST dataset as tensor
+    
+        gen_opt = torch.optim.Adam(gen.parameters(), lr=lr) 
+        disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
+  
+        val = store[unique]
+        store_in = []
+        for v in val:
+            store_in.append(np.asarray(v))
+        tensor_store_val = torch.Tensor(store_in).cuda()
+      
+    ###
+        dataloader = DataLoader(tensor_store_val, batch_size=4)
+        # directory = "/home/wayne/uji/gan+_model_state/b"+str(bid)+"f"+str(fid)+"/"
+        directory = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/b"+str(bid)+"f"+str(fid)+"/"
+        gen_save_state = directory+str(unique[0])+"_"+str(unique[1])+".pt"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        for epoch in range(n_epochs):
+
+          # Dataloader returns the batches
+            for real in dataloader:
+        
+                if torch.cuda.is_available():
+                    real = real.cuda()
+        
+                cur_batch_size = len(real)
+                
+                if cur_batch_size != 4:
+                    continue
+            
+            # Flatten the batch of real images from the dataset
+                real_b = real.view(cur_batch_size, -1).to(device)
+                if torch.cuda.is_available():
+                    real_b = real_b.cuda()
+      
+                real = preprocess(real_b)
+      
+                if torch.cuda.is_available():
+                    real = real.cuda()
+            ### Update discriminator ###
+            # Zero out the gradients before backpropagation
+                disc_opt.zero_grad()
+      
+            # Calculate discriminator loss
+                disc_loss = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device)
+      
+            # Update gradients
+                disc_loss.backward(retain_graph=True)
+      
+            # Update optimizer
+                disc_opt.step()
+            
+                gen_opt.zero_grad()
+                gen_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device)
+                gen_loss.backward(retain_graph=True)
+                gen_opt.step()
+      
+        torch.save(gen.state_dict(), gen_save_state)
+        count+=1
 
     
+def generate_img_csv():
+    #generate wgan-gp images for after training
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    gen_img = []
+    gen = Generator(10).to(device)
+    gen.load_state_dict(torch.load("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/b0f0/-7632.143599998206_4864982.217100002.pt"))
+    gen.eval()
+    fake_noise = get_noise(1, 10, device=device)
+    fake = gen(fake_noise)
+ 
+    fake = rpreprocess(fake[0])
+    print(fake)
+   
+# =============================================================================
+#     for i in range(len(labels)):
+#         gen = Generator(10).to(device)
+#         gen.load_state_dict(torch.load(model_state_dir+labels[i][0]+"_"+labels[i][1]+".pt"))
+#         gen.eval()
+#         print(model_state_dir+labels[i][0]+"_"+labels[i][1]+".pt")
+#         for k in range(2): #75*3
+#             fake_noise = get_noise(1, 10, device=device)
+#             fake = gen(fake_noise)
+#     
+#             fake = rpreprocess(fake[0])
+#             
+#             temp_fake = fake.detach().cpu().numpy().tolist()
+#             temp_fake.append(labels[i][0])
+#             temp_fake.append(labels[i][1])
+#             gen_img.append(temp_fake)
+#     col = ["AP"+str(i) for i in range(1,521)]
+#     col.append("LONGITUDE")
+#     col.append("LATITUDE")
+#     df = pd.DataFrame(gen_img, columns = col)
+#     print(df)
+# =============================================================================
+    # print(fake)
+# =============================================================================
+#     curr_label = data_dir.split('\\')
+#     directory = save_dir+'/'+str(curr_label[-1])
+#     if not os.path.exists(directory):
+#         os.makedirs(directory)
+#     for i in range(num_iter):
+#         noise = torch.randn(1, latent, 1, 1).to(device)
+#         fake_noise = get_noise(1, latent, device=device)
+#         fake = gen(fake_noise).detach().cpu()
+#         fake = rpreprocess(fake)
+#         imsave(fake, save_dir+'/'+str(curr_label[-1])+'/'+str(i)+'.png', px, my_dpi)
+# =============================================================================
+
     
 # =============================================================================
-#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/gan+/b1f3_train.csv",header=0)
-#     training_data_csv_in = np.array(df.iloc[:,:520])
-#     training_data_csv_lb = np.array(df.iloc[:,520:522])
-#     
-#     # training_data_csv_in = np.loadtxt('out_im_dirichlet.csv', delimiter=',', dtype=np.float)
-#     # training_data_csv_lb = np.loadtxt('out_lb_dirichlet.csv', delimiter=',', dtype=np.float)
-#     
-#     if torch.cuda.is_available():
-#         training_data_csv_in = torch.from_numpy(training_data_csv_in).cuda()
-#         training_data_csv_lb = torch.from_numpy(training_data_csv_lb).cuda()
-#     
-#     store={}
-#     for i in range(len(training_data_csv_in)): 
-#         k = training_data_csv_lb[i].tolist()
-#         v = training_data_csv_in[i].tolist()
-#     
-#         if tuple(k) in store:
-#     
-#             store[tuple(k)].append(v)
-#         else:
-#             store[tuple(k)] = [v]
-#     
-#     
-#     
-#     
-#     
-#     test_generator = True # Whether the generator should be tested
-#     gen_loss = False
-#     error = False
-#     criterion = nn.BCEWithLogitsLoss()
-#     n_epochs = 1000
-#     z_dim = 10
-#     display_step = 500
-#     batch_size = 128
-#     lr = 0.00001
-#     device = 'cuda'
-#     # Load MNIST dataset as tensor
-# 
-#     gen = Generator(z_dim).to(device)
-#     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
-#     disc = Discriminator().to(device) 
-#     disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
-# 
-#     if torch.cuda.is_available():
-#         gen = gen.cuda()
-#         disc = disc.cuda()
-#     
-#     # from utils import Logger
-#     count = 1
-#     for k in store.keys():
-#         
-#         val = store[k]
-#         store_in = []
-#         for v in val:
-#             store_in.append(np.asarray(v))
-#         tensor_store_val = torch.Tensor(store_in).cuda()
-#     
-#       ###
-#         dataloader = DataLoader(tensor_store_val, batch_size=4)
-#       # dataloader = DataLoader(tensor_store_val, batch_size=len(val))
-#         save_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/UJI/gan+_model_state/b1f3/"+str(k[0])+"_"+str(k[1])+".pt"
-#         print("Start training: {}/{}".format(count,len(store.keys())))
-#         for epoch in range(n_epochs):
-#         
-#           # Dataloader returns the batches
-#             for real in dataloader:
-#     
-#                 if torch.cuda.is_available():
-#                     real = real.cuda()
-#     
-#                 cur_batch_size = len(real)
-#     
-#                 if cur_batch_size != 4:
-#                     continue
-#               
-#               # Flatten the batch of real images from the dataset
-#                 real_b = real.view(cur_batch_size, -1).to(device)
-#                 if torch.cuda.is_available():
-#                     real_b = real_b.cuda()
-#     
-#                 real = preprocess(real_b)
-#     
-#                 if torch.cuda.is_available():
-#                     real = real.cuda()
-#               ### Update discriminator ###
-#               # Zero out the gradients before backpropagation
-#                 disc_opt.zero_grad()
-#     
-#               # Calculate discriminator loss
-#                 disc_loss = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device)
-#     
-#               # Update gradients
-#                 disc_loss.backward(retain_graph=True)
-#     
-#               # Update optimizer
-#                 disc_opt.step()
-#     
-#               # For testing purposes, to keep track of the generator weights
-#                 if test_generator:
-#                     old_generator_weights = gen.gen[0][0].weight.detach().clone()
-#     
-#               ### Update generator ###
-#               #     Hint: This code will look a lot like the discriminator updates!
-#               #     These are the steps you will need to complete:
-#               #       1) Zero out the gradients.
-#               #       2) Calculate the generator loss, assigning it to gen_loss.
-#               #       3) Backprop through the generator: update the gradients and optimizer.
-#               #### START CODE HERE ####
-#               
-#                 gen_opt.zero_grad()
-#                 gen_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device)
-#                 gen_loss.backward(retain_graph=True)
-#                 gen_opt.step()
-#               
-#               #### END CODE HERE ####
-#     
-#               # For testing purposes, to check that your code changes the generator weights
-#                 if test_generator:
-#                     try:
-#     
-#                         assert lr > 0.0000002 or (gen.gen[0][0].weight.grad.abs().max() < 0.0005 and epoch == 0)
-#                         assert torch.any(gen.gen[0][0].weight.detach().clone() != old_generator_weights)
-#                     except:
-#                         error = True
-#                         print("Runtime tests have failed")
-#                         
-#         torch.save(gen.state_dict(), save_state)
-#         count+=1
+# def find_gan_performance(act_img, gan_img):
+#     sol = 0
+#     for i in range(len(act_img)):
+#         temp = abs(act_img[i] - gan_img[i])
+#         sol+=temp
+#     return sol
 # =============================================================================
+
+
+if __name__ == "__main__":
+    
+# =============================================================================
+#    1. Dirichlet augmentation
+# =============================================================================
+
+    ### Input parameters ###
+# =============================================================================
+#     fid = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
+#     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/train_split/"
+#     save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet/"
+#     
+#     for i in fid:
+#         dirichlet_generate(csv_dir, i, save_dir)
+# =============================================================================
+# =============================================================================
+#  2. Training GAN+ using most samples
+# =============================================================================
+    # train_most_sample()
+    
         
-      
-      
-    # =============================================================================
-    #     for i in range(100):
-    #         fake_noise = get_noise(4, z_dim, device=device)
-    #         fake = gen(fake_noise)
-    #         for j in range(4):
-    #             temp = fake[j]
-    #             for q in range(len(temp)):
-    #                 if(temp[q]<0.001):
-    #                     temp[q]=0
-    #             temp = rpreprocess(temp)
-    #             mindiff = find_gan_performance(real_b[0], temp) 
-    #             for index in range(1, len(real_b)):
-    #                 curdiff = find_gan_performance(real_b[index], temp)
-    #                 if curdiff < mindiff:
-    #                     mindiff = curdiff
-    #             if(mindiff<=265.0):
-    #                 with open("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/out_im_dir_plus_gan.csv", "a") as f:
-    #                     temp = temp.cpu().detach().numpy().tolist()
-    #                     writer = csv.writer(f)
-    #                     writer.writerow(map(lambda x: x, temp))
-    # 
-    #                 with open("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/out_lb_dir_plus_gan.csv", "a") as f:
-    #                     k = list(k)
-    #                     writer = csv.writer(f)
-    #                     writer.writerow(map(lambda x: x, k))
-    # =============================================================================
-    # =============================================================================
-    # num_gen = 150 #number of image to generate
-    # for i in range(num_gen):
-    #     fake_noise = get_noise(1,z_dim,device=device)
-    #     fake = gen(fake_noise)
-    # =============================================================================
+# =============================================================================
+#   GAN+ with pre-training (original + dirichlet)
+# =============================================================================
+    train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
+    dirich_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet/b0f0.csv"   
+    gen_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/gen_gan+_most_sample.pt"
+    disc_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/gan+_model_state/disc_gan+_most_sample.pt"
+# =============================================================================
+#     train_csv_dir = "/home/wayne/uji/csv_files/UJI-trainingData.csv"
+#     dirich_csv_dir = "/home/wayne/uji/csv_files/dirichlet/b0f0.csv"   
+#     gen_state = "/home/wayne/uji/gen_gan+_most_sample.pt"
+#     disc_state = "/home/wayne/uji/disc_gan+_most_sample.pt"
+# =============================================================================
+    fid = 0
+    bid = 0
+    z_dim = 10
+    n_epochs = 500
+    lr = 0.00001
+    
+    gan_pretrained(train_csv_dir, dirich_csv_dir, fid, bid, gen_state, disc_state, z_dim, lr, n_epochs)
+
+    # generate_img_csv()
+
+
+    
+
+
+    
+
     
 
 
