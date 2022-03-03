@@ -287,6 +287,23 @@ def rpreprocess(x):
 
 
 def dirichlet_generate(csv_dir, fid, save_dir):
+    '''
+    Purpose: Generate dirichlet augmentation (where if RP contains < 75 images, dirich will generate till RP contains 75 images)
+
+    Parameters
+    ----------
+    csv_dir : string
+        directory of stored csv files
+    fid : string
+        e.g. "b0f0" for uji, "floor-1" for ng
+    save_dir : string
+        directory of dirichlet csv to be saved at
+
+    Returns
+    -------
+    None.
+
+    '''
     #store dictionary contains coordinates (latitude, longitude) as keys and rssi data as values (according to the number of samples belonging to coordinate) e.g. {(-7345.345, 4328596): [[AP0 ... AP520],[AP0 ... AP520]]}
     store = {}
 
@@ -310,12 +327,13 @@ def dirichlet_generate(csv_dir, fid, save_dir):
     count=0
     ### np.random.dirichlet takes N samples weights, where N is the total number of samples in RP. 
     ## N Dirichlet distribution adds up to 1. 
+    
     for k in store.keys(): #number of unique RP
         #Just need 75 samples 
         if (len(store[k]) <= 75) & (len(store[k]) != 1):
             sample_size = len(store[k])
             dirich_needed.append(75 - sample_size)
-
+         
             #randomly pick samples for dirichlet
             im_new  = [[0 for i in range(sample_size)] for j in range(520)]
             curr_rp_samples = np.array(store[k])
@@ -629,14 +647,13 @@ if __name__ == "__main__":
 # =============================================================================
 
     ### Input parameters ###
-# =============================================================================
-#     fid = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
-#     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/train_split/"
-#     save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet/"
-#     
-#     for i in fid:
-#         dirichlet_generate(csv_dir, i, save_dir)
-# =============================================================================
+    fid=['b1f0']
+    #fid = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
+    csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/train_split/"
+    save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet_add/"
+    
+    for i in fid:
+        dirichlet_generate(csv_dir, i, save_dir)
 # =============================================================================
 #  2. Training GAN+ using most samples
 # =============================================================================
@@ -662,7 +679,7 @@ if __name__ == "__main__":
     n_epochs = 500
     lr = 0.00001
     
-    gan_pretrained(train_csv_dir, dirich_csv_dir, fid, bid, gen_state, disc_state, z_dim, lr, n_epochs)
+    # gan_pretrained(train_csv_dir, dirich_csv_dir, fid, bid, gen_state, disc_state, z_dim, lr, n_epochs)
 
     # generate_img_csv()
 
