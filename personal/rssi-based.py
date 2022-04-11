@@ -55,4 +55,4 @@ def permutation(size, fid, bid, save_path):  # size is the number of permutation
 
     df.to_csv(save_path + "/" + "b" + str(bid) + "f" + str(fid) + ".csv", index=False)
 
-permutation(200,4,2,"C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/rssi-based/")
+permutation(300,0,0,"C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/rssi-based/")

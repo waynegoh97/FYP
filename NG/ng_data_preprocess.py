@@ -247,119 +247,119 @@ def generate_image(train_csv_dir, test_csv_dir, img_dim, save_dir, csv_dir, spli
         max_rssi = train_rssi.max()
     else:
         max_rssi = test_rssi.max()
-    
-    ### Create directory path to save images
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-        
-    ### Create extra columns to fit the image dimension
-    img_size_diff = (img_dim*img_dim)-345
-    for diff in range(img_size_diff):
-        train_df.insert(345,"P"+str(diff), -110)
-        test_df.insert(345,"P"+str(diff), -110)
-        
-    print("Size before removing: ", len(train_df))
-    ### Removing small label samples 
-    for i in range(len(fid_csv)):
-        curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])]
-        unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
-                
-    if (split == True):
-        for i in range(len(fid_csv)):
-            curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])]
-            train, valid = train_test_split(curr_df, test_size = 0.2)
-            train.to_csv(csv_dir+"/"+fid[i]+"_train.csv", index=False)
-            valid.to_csv(csv_dir+"/"+fid[i]+"_valid.csv", index=False)
-            
-            unique_loc_train = train.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
-            unique_loc_train = np.array(unique_loc_train.iloc[:,:2])
-            unique_loc_valid = valid.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
-            unique_loc_valid = np.array(unique_loc_valid.iloc[:,:2])
-            
-            for unique in range(len(unique_loc_train)):
-                rssi = train[(train["NEW_LONG"] == unique_loc_train[unique][0]) & 
-                             (train["NEW_LAT"] == unique_loc_train[unique][1])]
-                rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
-                if not os.path.isdir(save_dir+"/train_img/"+fid[i]+"_train/{}_{}".format(unique_loc_train[unique][0]
-                                                                                         ,unique_loc_train[unique][1])):
-                    os.makedirs(save_dir+"/train_img/"+fid[i]+"_train/{}_{}".format(unique_loc_train[unique][0],
-                                                                                    unique_loc_train[unique][1]))
-                for k in range(len(rssi)):
-                    plt.imsave(save_dir+"/train_img/"+fid[i]+"_train/{}_{}/{}.png".format(unique_loc_train[unique][0],
-                                                                                          unique_loc_train[unique][1],k),
-                               rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
-                    
-            for unique in range(len(unique_loc_valid)):
-                rssi = valid[(valid["NEW_LONG"] == unique_loc_valid[unique][0]) & 
-                             (valid["NEW_LAT"] == unique_loc_valid[unique][1])]
-                rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
-                if not os.path.isdir(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}".format(unique_loc_valid[unique][0],
-                                                                                         unique_loc_valid[unique][1])):
-                    os.makedirs(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}".format(unique_loc_valid[unique][0],
-                                                                                    unique_loc_valid[unique][1]))
-                for k in range(len(rssi)):
-                    plt.imsave(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}/{}.png".format(unique_loc_valid[unique][0],
-                                                                                          unique_loc_valid[unique][1],k),
-                               rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
-            
-        for i in range(len(fid_csv)):
-            curr_df = test_df[(test_df['FLOOR'] == fid_csv[i])] #by fid
-            unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
-            unique_loc = np.array(unique_loc.iloc[:,:2])
-            for unique in range(len(unique_loc)): #by coord
-                rssi = curr_df[(curr_df["NEW_LONG"] == unique_loc[unique][0]) & (curr_df["NEW_LAT"] == unique_loc[unique][1])]
-                rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
-      
-                if not os.path.isdir(save_dir+"/test_img/"+fid[i]+"_test/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1])):
-                    os.makedirs(save_dir+"/test_img/"+fid[i]+"_test/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1]))
-                for k in range(len(rssi)):
-                    plt.imsave(save_dir+"/test_img/"+fid[i]+"_test/{}_{}/{}.png".format(unique_loc[unique][0],unique_loc[unique][1],k),
-                               rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
-                    
-    else:
-        for i in range(len(fid_csv)):
-            curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])] #by fid
-            unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
-            unique_loc = np.array(unique_loc.iloc[:,:2])
-            for unique in range(len(unique_loc)): #by coord
-                rssi = curr_df[(curr_df["NEW_LONG"] == unique_loc[unique][0]) & (curr_df["NEW_LAT"] == unique_loc[unique][1])]
-                rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
-      
-                if not os.path.isdir(save_dir+"/train_only/"+fid[i]+"/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1])):
-                    os.makedirs(save_dir+"/train_only/"+fid[i]+"/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1]))
-                for k in range(len(rssi)):
-                    plt.imsave(save_dir+"/train_only/"+fid[i]+"/{}_{}/{}.png".format(unique_loc[unique][0],unique_loc[unique][1],k),
-                               rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
+    print(max_rssi)
+    # ### Create directory path to save images
+    # if not os.path.isdir(save_dir):
+    #     os.makedirs(save_dir)
+    #
+    # ### Create extra columns to fit the image dimension
+    # img_size_diff = (img_dim*img_dim)-345
+    # for diff in range(img_size_diff):
+    #     train_df.insert(345,"P"+str(diff), -110)
+    #     test_df.insert(345,"P"+str(diff), -110)
+    #
+    # print("Size before removing: ", len(train_df))
+    # ### Removing small label samples
+    # for i in range(len(fid_csv)):
+    #     curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])]
+    #     unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
+    #
+    # if (split == True):
+    #     for i in range(len(fid_csv)):
+    #         curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])]
+    #         train, valid = train_test_split(curr_df, test_size = 0.2)
+    #         train.to_csv(csv_dir+"/"+fid[i]+"_train.csv", index=False)
+    #         valid.to_csv(csv_dir+"/"+fid[i]+"_valid.csv", index=False)
+    #
+    #         unique_loc_train = train.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
+    #         unique_loc_train = np.array(unique_loc_train.iloc[:,:2])
+    #         unique_loc_valid = valid.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
+    #         unique_loc_valid = np.array(unique_loc_valid.iloc[:,:2])
+    #
+    #         for unique in range(len(unique_loc_train)):
+    #             rssi = train[(train["NEW_LONG"] == unique_loc_train[unique][0]) &
+    #                          (train["NEW_LAT"] == unique_loc_train[unique][1])]
+    #             rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
+    #             if not os.path.isdir(save_dir+"/train_img/"+fid[i]+"_train/{}_{}".format(unique_loc_train[unique][0]
+    #                                                                                      ,unique_loc_train[unique][1])):
+    #                 os.makedirs(save_dir+"/train_img/"+fid[i]+"_train/{}_{}".format(unique_loc_train[unique][0],
+    #                                                                                 unique_loc_train[unique][1]))
+    #             for k in range(len(rssi)):
+    #                 plt.imsave(save_dir+"/train_img/"+fid[i]+"_train/{}_{}/{}.png".format(unique_loc_train[unique][0],
+    #                                                                                       unique_loc_train[unique][1],k),
+    #                            rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
+    #
+    #         for unique in range(len(unique_loc_valid)):
+    #             rssi = valid[(valid["NEW_LONG"] == unique_loc_valid[unique][0]) &
+    #                          (valid["NEW_LAT"] == unique_loc_valid[unique][1])]
+    #             rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
+    #             if not os.path.isdir(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}".format(unique_loc_valid[unique][0],
+    #                                                                                      unique_loc_valid[unique][1])):
+    #                 os.makedirs(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}".format(unique_loc_valid[unique][0],
+    #                                                                                 unique_loc_valid[unique][1]))
+    #             for k in range(len(rssi)):
+    #                 plt.imsave(save_dir+"/valid_img/"+fid[i]+"_valid/{}_{}/{}.png".format(unique_loc_valid[unique][0],
+    #                                                                                       unique_loc_valid[unique][1],k),
+    #                            rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
+    #
+    #     for i in range(len(fid_csv)):
+    #         curr_df = test_df[(test_df['FLOOR'] == fid_csv[i])] #by fid
+    #         unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
+    #         unique_loc = np.array(unique_loc.iloc[:,:2])
+    #         for unique in range(len(unique_loc)): #by coord
+    #             rssi = curr_df[(curr_df["NEW_LONG"] == unique_loc[unique][0]) & (curr_df["NEW_LAT"] == unique_loc[unique][1])]
+    #             rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
+    #
+    #             if not os.path.isdir(save_dir+"/test_img/"+fid[i]+"_test/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1])):
+    #                 os.makedirs(save_dir+"/test_img/"+fid[i]+"_test/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1]))
+    #             for k in range(len(rssi)):
+    #                 plt.imsave(save_dir+"/test_img/"+fid[i]+"_test/{}_{}/{}.png".format(unique_loc[unique][0],unique_loc[unique][1],k),
+    #                            rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
+    #
+    # else:
+    #     for i in range(len(fid_csv)):
+    #         curr_df = train_df[(train_df['FLOOR'] == fid_csv[i])] #by fid
+    #         unique_loc = curr_df.groupby(["NEW_LONG","NEW_LAT"]).size().reset_index().rename(columns={0:'count'})
+    #         unique_loc = np.array(unique_loc.iloc[:,:2])
+    #         for unique in range(len(unique_loc)): #by coord
+    #             rssi = curr_df[(curr_df["NEW_LONG"] == unique_loc[unique][0]) & (curr_df["NEW_LAT"] == unique_loc[unique][1])]
+    #             rssi = np.array(rssi.iloc[:,:(img_dim*img_dim)]).reshape(-1,img_dim, img_dim)
+    #
+    #             if not os.path.isdir(save_dir+"/train_only/"+fid[i]+"/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1])):
+    #                 os.makedirs(save_dir+"/train_only/"+fid[i]+"/{}_{}".format(unique_loc[unique][0],unique_loc[unique][1]))
+    #             for k in range(len(rssi)):
+    #                 plt.imsave(save_dir+"/train_only/"+fid[i]+"/{}_{}/{}.png".format(unique_loc[unique][0],unique_loc[unique][1],k),
+    #                            rssi[k], vmin = -110, vmax = max_rssi, cmap="gray")
 
 if __name__ == '__main__':
 # =============================================================================
 #     1. Clean up csv file by grid (also removing grid with samples < 4)
 # =============================================================================
-    train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_train.csv"
-    new_train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_train_modified_2m.csv"
-    test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test.csv"
-    new_test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test_modified_2m.csv"
-    discard = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/discard_2m.csv"
-    grid_size = 2
-    #Grid size: 1m (1218 labels usable, 310 labels less than 4 samples, 43 rows not within grid)
-    #Grid size: 1.5m (911 labels usable, 139 labels less than 4 samples, 43 rows not within grid)
-    #Grid size: 2m (729 labels usabale, 78 labels less than 4 samples, 43 rows not within grid)
-    #Grid size: 2.5m (610 labels usabale, 44 labels less than 4 samples, 43 rows not within grid)
-    #Grid size: 3m (31 labels less than 4 samples, 43 rows not within grid)
-    ng_coord_reorg_train(train_csv_dir, new_train_csv_dir, discard, grid_size)
-    ng_coord_reorg_test(test_csv_dir, new_test_csv_dir, grid_size)
+#     train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_train.csv"
+#     new_train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_train_modified_2m.csv"
+#     test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test.csv"
+#     new_test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test_modified_2m.csv"
+#     discard = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/discard_2m.csv"
+#     grid_size = 2
+#     #Grid size: 1m (1218 labels usable, 310 labels less than 4 samples, 43 rows not within grid)
+#     #Grid size: 1.5m (911 labels usable, 139 labels less than 4 samples, 43 rows not within grid)
+#     #Grid size: 2m (729 labels usabale, 78 labels less than 4 samples, 43 rows not within grid)
+#     #Grid size: 2.5m (610 labels usabale, 44 labels less than 4 samples, 43 rows not within grid)
+#     #Grid size: 3m (31 labels less than 4 samples, 43 rows not within grid)
+#     ng_coord_reorg_train(train_csv_dir, new_train_csv_dir, discard, grid_size)
+#     ng_coord_reorg_test(test_csv_dir, new_test_csv_dir, grid_size)
 # =============================================================================
 #     2. Split csv data into different floors
 # =============================================================================
 
-    test_datatype = "_test"
-    save_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_split"
-    new_test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test_modified_2m.csv"
-    max_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_split/WGAN/max_sample.csv"
-    ng_split_floor(new_test_csv_dir, test_datatype, save_path)
+    # test_datatype = "_test"
+    # save_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_split"
+    # new_test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test_modified_2m.csv"
+    # max_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_split/WGAN/max_sample.csv"
+    # ng_split_floor(new_test_csv_dir, test_datatype, save_path)
+    #
+    # ng_max_sample(new_train_csv_dir, max_dir) #print details of most sample (manually take from train_only image folder)
 
-    ng_max_sample(new_train_csv_dir, max_dir) #print details of most sample (manually take from train_only image folder)
-    
 # =============================================================================
 #     plot(new_train_csv_dir)
 #     plot(discard)
@@ -367,14 +367,15 @@ if __name__ == '__main__':
 # =============================================================================
 #   3. Generating images
 # =============================================================================
-    train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_train_modified_2m.csv"
-    test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/combined_test_modified_2m.csv"
+    train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/combined_train_modified_2m.csv"
+    test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/combined_test_modified_2m.csv"
     img_dim = 19
     img_save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/"
     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/csv_files/ng_split/WGAN/"
-    
+
     generate_image(train_csv_dir, test_csv_dir, img_dim, img_save_dir, csv_dir, True) #for localisation
-    generate_image(train_csv_dir, test_csv_dir, img_dim, img_save_dir, csv_dir, False) #for augmentation (as it should use all training dataset)
+
+    # generate_image(train_csv_dir, test_csv_dir, img_dim, img_save_dir, csv_dir, False) #for augmentation (as it should use all training dataset)
 
 
 

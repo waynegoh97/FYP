@@ -253,6 +253,73 @@ class UJI_Generator(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+# For 18x18 images
+class N4_Discriminator(nn.Module):
+    def __init__(self, channels_img, features_d):
+        super(N4_Discriminator, self).__init__()
+        self.disc = nn.Sequential(
+            # input: N x channels_img x 18 x 18
+            nn.Conv2d(
+                channels_img, features_d * 2, kernel_size=2, stride=2, padding=0
+            ),  # 64x9x9
+            nn.LeakyReLU(0.2),
+            # _block(in_channels, out_channels, kernel_size, stride, padding)
+            self._block(features_d * 2, features_d * 4, 3, 2, 1),  # 128x5x5
+            self._block(features_d * 4, features_d * 8, 3, 2, 0),  # 256x2x2
+            # After all _block img output is 4x4 (Conv2d below makes into 1x1)
+            nn.Conv2d(features_d * 8, 1, kernel_size=2, stride=1, padding=0),  # 1x1x1
+        )
+
+    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
+        return nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+                bias=False,
+            ),
+            nn.InstanceNorm2d(out_channels, affine=True),
+            nn.LeakyReLU(0.2),
+        )
+
+    def forward(self, x):
+        return self.disc(x)
+
+
+# Generator: noise > decreasing node + batchnorm + relu > feature critic layer (64)
+class N4_Generator(nn.Module):
+    def __init__(self, channels_noise, channels_img, features_g):
+        super(N4_Generator, self).__init__()
+        self.net = nn.Sequential(
+            # Input: N x channels_noise x 1 x 1
+            self._block(channels_noise, features_g * 8, 2, 1, 0),  # img: 2x2
+            self._block(features_g * 8, features_g * 4, 3, 2, 0),  # img: 5x5
+            self._block(features_g * 4, features_g * 2, 3, 2, 1),  # img: 9x9
+            nn.ConvTranspose2d(
+                features_g * 2, channels_img, kernel_size=2, stride=2, padding=0
+            ),
+            # Output: N x channels_img x 18x18
+            nn.Tanh(),
+        )
+
+    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
+        return nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride,
+                padding,
+                bias=False,
+            ),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 def initialize_weights(model):
     # Initializes weights for wgan-gp
@@ -429,8 +496,8 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dataloader, mean, std, _, _ = load_by_label(data_dir, batch)
     unorm = UnNormalize(mean=mean, std=std)
-    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
-    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
+    gen = N4_Generator(latent, img_channel, gen_layer).to(device)
+    critic = N4_Discriminator(img_channel, critic_layer).to(device)
     gen.load_state_dict(torch.load(gen_model_state))
     critic.load_state_dict(torch.load(disc_model_state))
 
@@ -479,7 +546,7 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
 def generate_wgan_img(num_iter, model_state_dir, data_dir, latent, gen_layer, img_channel, px, my_dpi, save_dir):
     # generate wgan-gp images for after training
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
+    gen = N4_Generator(latent, img_channel, gen_layer).to(device)
     gen.load_state_dict(torch.load(model_state_dir))
     gen.eval()
 
@@ -578,6 +645,18 @@ def abs_diff_ori(ori_dir, img_dim):
     max_diff = max(diff)
     return max_diff
 
+def overall_threshold(loclist, csvdir):
+    size = 0
+    threshold = 0
+    for bfid in loclist:
+        df = pd.read_csv(csvdir+bfid+".csv",header=0)
+        size+= len(df)
+        temp_th =  df["max_threshold"].sum()
+        threshold+= temp_th
+    threshold = threshold/size
+    return threshold
+
+
 if __name__ == "__main__":
     # =============================================================================
     #     1. Checking GAN model
@@ -594,7 +673,7 @@ if __name__ == "__main__":
     # =============================================================================
     LEARNING_RATE = 0.001  # 0.001 (mnist)
     BATCH_SIZE = 4  # 32 (mnist), 8 for wgan-gp uji
-    IMAGE_SIZE = 23
+    IMAGE_SIZE = 18
     CHANNELS_IMG = 1
     Z_DIM = 100
     NUM_EPOCHS = 1000
@@ -602,12 +681,12 @@ if __name__ == "__main__":
     FEATURES_GEN = 64
     CRITIC_ITERATIONS = 5
     LAMBDA_GP = 10
-    num_gen = 200
+    num_gen = 400
     my_dpi = 96  # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
-    # data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/most_sample/'  # for most labels
-    gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/gen_most_sample.pt'
-    disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/disc_most_sample.pt'
-
+    # data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/most_sample/'  # for most labels
+    # gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/gen_most_sample.pt'
+    # disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/disc_most_sample.pt'
+    #
     # wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
     #         FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
 
@@ -615,28 +694,26 @@ if __name__ == "__main__":
     # =============================================================================
     #     3. WGAN-GP pre-train for each RP
     # =============================================================================
-    unique_loc = "b2f4"
-    # data_dir = "/home/SEANGLIDET/uji/images/original/train_only/"+unique_loc
-    # saved_state = "/home/SEANGLIDET/uji/model_state/WGAN-GP/"+unique_loc
-    # gen_saved_state = '/home/SEANGLIDET/uji/model_state/WGAN-GP/gen_most_sample.pt'
-    # disc_saved_state = '/home/SEANGLIDET/uji/model_state/WGAN-GP/disc_most_sample.pt'
-    data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/train_only/'+unique_loc
-    saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/original/'+unique_loc
-
-
-    if not os.path.exists(saved_state):
-        os.makedirs(saved_state)
-    NUM_EPOCHS = 500
-    label_dir = label_directory(data_dir)
-
-
-    for i in range(45,66):#len(label_dir)):
-        #curr_label = label_dir[i].split("/")
-        curr_label = label_dir[i].split('\\') #for windows pc
-        save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
-
-        wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS,
-                          CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+    # unique_loc = "F1Sb"
+    # data_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/train/"+unique_loc #"/home/SEANGLIDET/n4/images/WGAN-GP/train/"+unique_loc
+    # saved_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/"+unique_loc #"/home/SEANGLIDET/n4/model_state/WGAN-GP/"+unique_loc
+    # gen_saved_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/gen_most_sample.pt"#'/home/SEANGLIDET/n4/model_state/gen_most_sample.pt'
+    # disc_saved_state = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/disc_most_sample.pt"#'/home/SEANGLIDET/n4/model_state/disc_most_sample.pt'
+    #
+    # if not os.path.exists(saved_state):
+    #     os.makedirs(saved_state)
+    # NUM_EPOCHS = 500
+    # label_dir = label_directory(data_dir)
+    # # label_dir = ['58.8_12.86', '58.8_15.31', '58.8_17.76'] #29,32
+    # # ['3.68_15.31'] #22,23
+    #
+    # for i in range(22,23):#len(label_dir)):
+    #     # curr_label = label_dir[i].split("/")
+    #     curr_label = label_dir[i].split('\\') #for windows pc
+    #     save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
+    #     print(curr_label, save_state)
+    #     wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS,
+    #                       CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
 
 
 
@@ -644,21 +721,30 @@ if __name__ == "__main__":
     #     4. Generate images
     # =============================================================================
     # =============================================================================
-    # unique_loc = ["b0f0"]
-    # for u in unique_loc:
-    #     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/images/original_split/train/'+u
-    #     gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/images/WGAN-GP/'+u
-    #     saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/model_state/WGAN-GP/'+u
-    #
-    #     if not os.path.exists(gen_img_dir):
-    #         os.makedirs(gen_img_dir)
-    #
-    #     label_dir = label_directory(data_dir)
-    #     for i in range(len(label_dir)):
-    #         curr_label = label_dir[i].split('\\')  # for windows pc
-    #         save_state = saved_state + '/' + str(curr_label[-1]) + '.pt'
-    #         generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE,
-    #                           my_dpi, gen_img_dir)
+    unique_loc = ["F1Sb"]
+
+
+    for u in unique_loc:
+        data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/train/'+u
+        gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/unfiltered/'+u
+        saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/'+u
+
+         #for individual gen
+        # if not os.path.exists(gen_img_dir):
+        #     os.makedirs(gen_img_dir)
+        # l = data_dir + "\\-7691.338399998844_4864928.212899998"
+        # save_state = saved_state + '/-7691.338399998844_4864928.212899998.pt'
+        # generate_wgan_img(num_gen, save_state, l, Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
+
+        label_dir = label_directory(data_dir)
+        for i in range(22,23):#len(label_dir)):
+            curr_label = label_dir[i].split('\\')  # for windows pc
+            print(curr_label)
+            save_state = saved_state + '/' + str(curr_label[-1]) + '.pt'
+
+
+            generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE,
+                              my_dpi, gen_img_dir)
 
 
     # =============================================================================
@@ -668,43 +754,76 @@ if __name__ == "__main__":
 
     # Finding threshold by finding the max diff between original images
 
-    # unique_loc = "b2f4"
-    # img_dim = 23
+    # unique_loc = "F2Sb"
+    # img_dim = 18
     # max_threshold = []
     #
-    # csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/max_threshold/"
-    # ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/train_only/"+unique_loc
+    # csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/max_threshold/"
+    # ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/train_only/"+unique_loc
     # curr_labels = os.listdir(ori_dir)
     # for k in curr_labels:
     #     max_threshold.append([k, abs_diff_ori(ori_dir+"/"+k, img_dim)])
     #     df = pd.DataFrame(max_threshold, columns = ["labels", "max_threshold"])
     #     df.to_csv(csv_dir+unique_loc+".csv", index=False)
 
-    # Filtering generated images
+    #Filtering generated images with local threshold
 
-    # bid = "b0f1"
-    # ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/train_only/" + bid + "/"
-    # curr_labels = os.listdir(ori_dir)
+    bidd = ['F1Sa']
+    for bid in bidd:
+        ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/train_only/" + bid + "/"
+        curr_labels = os.listdir(ori_dir)
+
+        img_dim = 18
+        gen_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/unfiltered/" + bid + "/"
+        threshold_df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/max_threshold/" + bid + ".csv")
+        new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/filtered/" + bid + "/"
+        size = []
+        # for individual filter
+        # lb = "58.8_17.76"
+        # ori_diff = threshold_df[threshold_df["labels"] == lb]
+        # ori_diff = ori_diff.iloc[0, 1]
+        # df = abs_diff_gen(ori_dir + lb, gen_dir + lb, img_dim, ori_diff)
+        # size.append(len(df))
+        # for k in range(len(df)):
+        #     shutil.copy(gen_dir + lb + "/" + df[k], new_dir + lb + '/' + df[k])
+
+        for i in range(len(curr_labels)):
+            ori_diff = threshold_df[threshold_df["labels"] == curr_labels[i]]
+            ori_diff = ori_diff.iloc[0, 1]
+            df = abs_diff_gen(ori_dir + curr_labels[i], gen_dir + curr_labels[i], img_dim, ori_diff)
+            size.append(len(df))
+            for k in range(len(df)):
+                if not os.path.exists(new_dir + curr_labels[i]):
+                    os.makedirs(new_dir + curr_labels[i])
+                shutil.copy(gen_dir + curr_labels[i] + "/" + df[k], new_dir + curr_labels[i] + '/' + df[k])
+        print(size)
+
+    #Filtering with overall threshold
+
+    # bid = ['floor-1','floor1','floor2']#["b0f0","b0f1", "b0f2", "b0f3", "b1f0","b1f1", "b1f2", "b1f3","b2f0","b2f1", "b2f2", "b2f3", "b2f4"]
+    # csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/max_threshold/"
+    # othreshold = overall_threshold(bid,csv_dir)
+    # print(othreshold)
+    # bid = ["floor2"]
+    # for b in bid:
+    #     ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/train_img/" + b + "_train/"
+    #     curr_labels = os.listdir(ori_dir)
     #
-    # img_dim = 23
-    # gen_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/train_img/" + bid + "_wgan/"
-    # threshold_df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/max_threshold/" + bid + ".csv")
-    # new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/train_img/filtered_wgan/" + bid + "/"
-    # size = []
-    # for i in range(len(curr_labels)):
-    #     ori_diff = threshold_df[threshold_df["labels"] == curr_labels[i]]
-    #     ori_diff = ori_diff.iloc[0, 1]
-    #     df = abs_diff_gen(ori_dir + curr_labels[i], gen_dir + curr_labels[i], img_dim, ori_diff)
-    #     size.append(len(df))
-    #     for k in range(len(df)):
-    #         if not os.path.exists(new_dir + curr_labels[i]):
-    #             os.makedirs(new_dir + curr_labels[i])
-    #         shutil.copy(gen_dir + curr_labels[i] + "/" + df[k], new_dir + curr_labels[i] + '/' + df[k])
-    # print(size)
-
-
-
-
+    #     img_dim = 19
+    #     gen_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/GAN+/unfiltered/" + b + "/"
+    #     new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/GAN+/filtered/" + b + "/"
+    #     size = []
+    #
+    #
+    #     for i in range(len(curr_labels)):
+    #         df = abs_diff_gen(ori_dir + curr_labels[i], gen_dir + curr_labels[i], img_dim, othreshold)
+    #
+    #         size.append(len(df))
+    #         for k in range(len(df)):
+    #             if not os.path.exists(new_dir + curr_labels[i]):
+    #                 os.makedirs(new_dir + curr_labels[i])
+    #             shutil.copy(gen_dir + curr_labels[i] + "/" + df[k], new_dir + curr_labels[i] + '/' + df[k])
+    #     print(b, size)
 
 
 

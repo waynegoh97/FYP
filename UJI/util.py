@@ -200,6 +200,9 @@ def imsave(imgs, save_dir, px, my_dpi):
     # plt.imsave('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/test.png',np.transpose(npimgs, (1,2,0)), cmap='gray')
     plt.imshow(np.transpose(npimgs, (1,2,0)), cmap = "Greys_r")
     fig.savefig(save_dir, dpi=my_dpi)
+    fig.clf()
+    plt.clf()
+    plt.cla()
     plt.close(fig)
         
 
@@ -214,12 +217,6 @@ def ori_img(num_img, img_dir):
 
 def abs_diff_gen(ori_dir, gen_dir, img_dim, ori_diff):
     #Loading data
-# =============================================================================
-#     ori_label_dir = label_directory(ori_dir)
-#     ori_dataloader, _,_,_,_= load_by_label(ori_label_dir[0], 1, False)
-#     gen_label_dir = label_directory(gen_dir)
-#     gen_dataloader, _, _, gen_img_name, gen_label= load_by_label(gen_label_dir[0], 1, False)
-# =============================================================================
     
     ori_dataloader, _,_,_,_= load_by_label(ori_dir, 1, False)
     gen_dataloader, _, _, gen_img_name, gen_label= load_by_label(gen_dir, 1, False)
@@ -233,33 +230,36 @@ def abs_diff_gen(ori_dir, gen_dir, img_dim, ori_diff):
         gen_list.append(data.numpy())
     ori_list = np.array(ori_list).reshape((-1,img_dim,img_dim))
     gen_list = np.array(gen_list).reshape((-1,img_dim,img_dim))
-    
     #Find the abs diff of each generated images against all original images
     for k in range(len(gen_list)):
         result = [] 
         diff = []
         for ori in range(len(ori_list)):
             result.append(np.absolute(ori_list[ori] - gen_list[k]))
-            
         for i in range(len(result)):
             diff.append(np.array(result[i]).sum())
         gen_abs_diff_dict[gen_img_name[k]] = diff
+
 
     #Find the min diff for each generated images [list contains min diff in image order (e.g. 0.png, 1.png...)]
     min_list = []
     img_name = []
     for i in range(len(gen_list)):
         # min_list.append(sum(gen_abs_diff_dict[str(i)+'.png'])/len(gen_abs_diff_dict[str(i)+'.png']))
-        min_list.append(min(gen_abs_diff_dict[str(i)+'.png']))
-        img_name.append(str(i)+'.png')
+        if 'wgan_'+str(i)+'.png' in gen_abs_diff_dict:
+            min_list.append(min(gen_abs_diff_dict['wgan_'+str(i)+'.png']))
+            img_name.append('wgan_'+str(i)+'.png')
     dict_col = {'img_name': img_name, 'abs_score': min_list}
     df = pd.DataFrame(dict_col)
-    df = df[df['abs_score'] < ori_diff]
+    df = df[df['abs_score'] <= ori_diff]
     df = df.sort_values(by=['abs_score'], ignore_index=True)
-    for rename in range(20):
-        new_name = 'new_'+str(rename)+'.png'
-        os.rename(gen_dir + '/' +df.iloc[rename,0], gen_dir +'/'+new_name)
-    return df
+    dfa = np.array(df.iloc[:30,0])
+# =============================================================================
+#     for rename in range(20):
+#         new_name = 'new_'+str(rename)+'.png'
+#         os.rename(gen_dir + '/' +df.iloc[rename,0], gen_dir +'/'+new_name)
+# =============================================================================
+    return dfa
 
 def abs_diff_ori(ori_dir, img_dim):
     # ori_label_dir = label_directory(ori_dir)

@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 
 
-def dirichlet_generate(csv_dir, save_dir):
+def dirichlet_generate(train_df, save_dir):
     # store dictionary contains coordinates (latitude, longitude) as keys and rssi data as values (according to the number of samples belonging to coordinate) e.g. {(-7345.345, 4328596): [[AP0 ... AP520],[AP0 ... AP520]]}
     store = {}
 
-    train_df = pd.read_csv(csv_dir, header=0)
-    train_input = np.array(train_df.iloc[: ,:520])
-    train_label = np.array(train_df.iloc[: ,520:522])
+
+    train_input = np.array(train_df.iloc[: ,:345])
+    train_label = np.array(train_df.iloc[: ,-2:])
     for j in range(len(train_input)):
         k = train_label[j].tolist()
         v = train_input[j].tolist()
@@ -32,10 +32,10 @@ def dirichlet_generate(csv_dir, save_dir):
     for k in store.keys():  # number of unique RP
 
         sample_size = len(store[k])
-        dirich_needed.append(75 - sample_size)
+        dirich_needed.append(100 - sample_size)
 
         # randomly pick samples for dirichlet
-        im_new = [[0 for i in range(sample_size)] for j in range(520)]
+        im_new = [[0 for i in range(sample_size)] for j in range(345)]
         curr_rp_samples = np.array(store[k])
         curr_rp_samples[curr_rp_samples == 100] = -110
         curr_rp_samples = curr_rp_samples.T
@@ -43,7 +43,7 @@ def dirichlet_generate(csv_dir, save_dir):
         for gen in range(math.ceil(100 / sample_size)):
             for s in range(sample_size):
                 weight = np.random.dirichlet(np.ones(sample_size), size=1)
-                for ap in range(520):
+                for ap in range(345):
                     im_new[ap][s] = np.sum(np.multiply(weight, curr_rp_samples[ap][:]))
                     if (110 + im_new[ap][s] <= 0.000001):
                         im_new[ap][s] = -110.0
@@ -53,7 +53,7 @@ def dirichlet_generate(csv_dir, save_dir):
         count += 1
 
     # Create column names
-    col = ["AP" + str(i) for i in range(1, 521)]
+    col = ["AP" + str(i) for i in range(1, 346)]
     df = pd.DataFrame(tempim[0], columns=col)
     df["LATITUDE"] = templb[0][1]
     df["LONGITUDE"] = templb[0][0]
@@ -76,7 +76,13 @@ def dirichlet_generate(csv_dir, save_dir):
     new_df.to_csv(save_dir, index=False)
 
 if __name__ == "__main__":
-    fid = "b0f0"
-    csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/csv_files/"+fid + "_train.csv"
-    save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/csv_files/dirichlet/"+fid+ ".csv"
-    dirichlet_generate(csv_dir, save_dir)
+    # fid = 0
+    bid = 2
+    for fid in range(5):
+        csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/combined_train_modified_2m.csv"
+        df = pd.read_csv(csv_dir, header=0)
+        df = df.replace(100,-110)
+        df = df[df["FLOOR"] == bid]
+        #df = df[(df.BUILDINGID == bid) & (df.FLOOR == fid)]
+        save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/dirich_floor"+str(bid)+".csv"
+        dirichlet_generate(df, save_dir)

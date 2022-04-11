@@ -307,7 +307,7 @@ def train_model(trainloader, validloader, model, lr, epochs, patience, state_nam
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-            total_train_loss += loss
+            total_train_loss += loss.detach()
             
         model.eval()
         with torch.no_grad():
@@ -319,7 +319,7 @@ def train_model(trainloader, validloader, model, lr, epochs, patience, state_nam
                
                 output = model(data)
                 loss = criterion(output, target)
-                total_valid_loss += loss
+                total_valid_loss += loss.detach()
                 
         train_loss = total_train_loss/len(trainloader.dataset)
         valid_loss = total_valid_loss/len(validloader.dataset)
@@ -445,38 +445,39 @@ if __name__ == '__main__':
     ##### Parameters #####
     ##### Code for single runs #####
 # =============================================================================
-#     batch_size = 32
-#     lr = 0.001 #test for 0.001, 0.0001, 0.0003
-#     epochs = 300 
-#     patience = 100 #old used 30
-#     state_name = "resnet18.pt"
-#     # save_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/results/'
-#     # train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_train_wgan_equal"
-#     # valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_valid"
-#     # test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_test"
-#     save_dir = '/home/wayne/wgan/results/'
-#     train_img_dir = "/home/wayne/wgan/uji_images/train_img/b0f0_train"
-#     valid_img_dir = "/home/wayne/wgan/uji_images/valid_img/b0f0_valid"
-#     test_img_dir = "/home/wayne/wgan/uji_images/test_img/b0f0_test"
-#     model = resnet18()
-#     ##### Normalize data input and output. Load data. #####
-#     trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
-#     train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
-#     predict_output, label = predict_result(state_name,model,testloader)
-#     result = prediction_error(predict_output, label)
+    batch_size = 32
+    lr = 0.0003 #test for 0.001, 0.0001, 0.0003
+    epochs = 300
+    patience = 100 #old used 30
+    state_name = "0.0003_test.pt"
+    save_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/'
+    train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/b0f1_train/"
+    valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/valid_img/b0f1_valid/"
+    test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/test_img/b0f1_test/"
+    # save_dir = '/home/wayne/wgan/results/'
+    # train_img_dir = "/home/wayne/wgan/uji_images/train_img/b0f0_train"
+    # valid_img_dir = "/home/wayne/wgan/uji_images/valid_img/b0f0_valid"
+    # test_img_dir = "/home/wayne/wgan/uji_images/test_img/b0f0_test"
+    model = resnet18()
+    ##### Normalize data input and output. Load data. #####
+    trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
+    train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
+    predict_output, label = predict_result(state_name,model,testloader, save_dir)
+    result = prediction_error(predict_output, label)
+    print(result)
 # =============================================================================
     
     
+    ##### Code for multiple runs #####
+    ##### Parameters #####
 # =============================================================================
-#     ##### Code for multiple runs #####
-#     ##### Parameters #####
 #     num_train = 5
 #     batch_size = 32
-#     lr = [0.001, 0.0001, 0.0003]
+#     lr = 0.0003
 #     epochs = 300 
 #     patience = 100 #old used 30
-#     # save_dir = '/home/wayne/wgan/results/'
-#     save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
+#     save_dir = '/home/wayne/uji/results/'
+#     # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
 #     model = resnet18()
 #     ### 4 types of training data for each unique building and floor [e.g. b0f0_original, b0f0_wgan, b0f0_original_wgan, b0f0_mix]
 # # =============================================================================
@@ -486,45 +487,39 @@ if __name__ == '__main__':
 # #     valid_img > b0f0_valid, b0f1_valid
 # #     test_img > b0f0_test, b0f1_test
 # # =============================================================================
-#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
-#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
-#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
 # # =============================================================================
-# #     train_dir = "/home/wayne/wgan/uji_images/train_img/"
-# #     valid_dir = "/home/wayne/wgan/uji_images/valid_img/"
-# #     test_dir = "/home/wayne/wgan/uji_images/test_img/"
+# #     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
+# #     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
+# #     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
 # # =============================================================================
+#     train_dir = "/home/wayne/uji/images/train_img/"
+#     valid_dir = "/home/wayne/uji/images/valid_img/"
+#     test_dir = "/home/wayne/uji/images/test_img/"
 #     
 # # =============================================================================
 # #     train_img_dir = os.listdir(train_dir)
 # #     valid_img_dir = os.listdir(valid_dir)
 # #     test_img_dir = os.listdir(test_dir)
 # # =============================================================================
-#     train_img_dir = ['b1f1_original_wgan','b1f1_train','b1f2_original_wgan','b1f2_train',
-#                      'b1f3_original_wgan','b1f3_train', 'b2f0_original_wgan','b2f0_train', 'b2f1_original_wgan','b2f1_train',
-#                      'b2f2_original_wgan','b2f2_train', 'b2f3_original_wgan','b2f3_train']
-#     valid_img_dir = ['b1f1_valid','b1f2_valid','b1f3_valid','b2f0_valid','b2f1_valid','b2f2_valid','b2f3_valid']
-#     test_img_dir = ['b1f1_test','b1f2_test','b1f3_test','b2f0_test','b2f1_test','b2f2_test','b2f3_test']
+#     train_img_dir = ['b0f0_extendedWGAN+','b0f1_extendedWGAN+','b0f2_extendedWGAN+','b0f3_extendedWGAN+','b1f0_extendedWGAN+','b1f1_extendedWGAN+','b1f2_extendedWGAN+','b1f3_extendedWGAN+',
+#                      'b2f0_extendedWGAN+','b2f1_extendedWGAN+','b2f2_extendedWGAN+','b2f3_extendedWGAN+','b2f4_extendedWGAN+']
+#     valid_img_dir = ['b0f0_valid','b0f1_valid','b0f2_valid','b0f3_valid','b1f0_valid','b1f1_valid','b1f2_valid','b1f3_valid','b2f0_valid','b2f1_valid','b2f2_valid','b2f3_valid','b2f4_valid']
+#     test_img_dir = ['b0f0_test','b0f1_test','b0f2_test','b0f3_test','b1f0_test','b1f1_test','b1f2_test','b1f3_test','b2f0_test','b2f1_test','b2f2_test','b2f3_test','b2f4_test']
 #     
-#     next_list = 0
-#     curr_index = 0
+# 
 #     for img_folder in range(len(train_img_dir)):
-#         for k in range(len(lr)):
-#             for i in range(num_train):
-#                 state_name = str(lr[k])+'_'+ str(i)+'_'+train_img_dir[img_folder]+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
-#              
-#                 trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir[img_folder], 
-#                                                                                 valid_dir + valid_img_dir[curr_index], 
-#                                                                                 test_dir + test_img_dir[curr_index], batch_size)
-#                 
-#                 train_model(trainloader, validloader, model, lr[k], epochs, patience, state_name, save_dir)
-#                 print()
-#         if next_list != 1:
-#             next_list += 1
-#         else:
-#             next_list = 0
-#             curr_index += 1
+#      
+#         for i in range(num_train):
+#             state_name = str(lr)+'_'+ str(i)+'_'+train_img_dir[img_folder]+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
+#          
+#             trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir[img_folder], 
+#                                                                             valid_dir + valid_img_dir[img_folder], 
+#                                                                             test_dir + test_img_dir[img_folder], batch_size)
+#             
+#             train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
 # =============================================================================
+           
+
     
     ##### Prediction Error #####
 # =============================================================================
@@ -534,53 +529,48 @@ if __name__ == '__main__':
 #     state_details = []### order: lr, train_num, fid, case
 #     pred = []
 #     
-#     lr = [0.001, 0.0001, 0.0003]
-#     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
+#     lr = 0.0003
+#     case_name = ['_extendedGAN+']#['_train', '_wgan', '_original_wgan', '_mix']
 #     # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
-#     save_dir = "/home/wayne/wgan/results/"
+#     save_dir = "/home/wayne/uji/results/"
 #     floor_id = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3', 'b2f0', 'b2f1', 'b2f2', 'b2f3', 'b2f4']
-#     # floor_id = ['b1f0', 'b2f0']
+#      
 # 
-#     # trainloader, validloader, testloader = normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size)     
-# 
-#     train_dir = "/home/wayne/wgan/uji_images/train_img/"
-#     valid_dir = "/home/wayne/wgan/uji_images/valid_img/"
-#     test_dir = "/home/wayne/wgan/uji_images/test_img/"
+#     train_dir = "/home/wayne/uji/images/extendedGAN+/"
+#     valid_dir = "/home/wayne/uji/images/valid_img/"
+#     test_dir = "/home/wayne/uji/images/test_img/"
 #     #solve the testloader
 #     next_list = 0
 #     curr_index = 0
 # 
 #     model = resnet18()
 #     ### csv file: lr, train_num, fid, case, mean, min, max, var
-#     for i in lr:
-#         for t in range(num_train):
-#             for fid in floor_id:
-#                 print(fid)
-#                 curr_test = test_dir + fid + "_test"
-#                 curr_valid = valid_dir + fid + "_valid"
-#                 for case in case_name:
-#                     curr_train = train_dir + fid + case
-#                     ### For b1f0 and b2f0 unknown error ###
-#                     
-#                     #######
-#                     _, train_label, _ = data_and_label(curr_train)
-#                     origin = np.amin(train_label,axis=0)
-#                     _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
-#                     state_name = str(i)+'_'+str(t)+'_'+fid+case+'.pt'
-#                     predict_output, label = predict_result(state_name, model, testloader, save_dir)
-#                     for size in range(len(predict_output)):
-#                         pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
-#                     result.append(prediction_error(predict_output, label))
-#                     state_details.append([i, t, fid, case])
+#  
+#     for t in range(num_train):
+#         for fid in floor_id:
+#             print(fid)
+#             curr_test = test_dir + fid + "_test"
+#             curr_valid = valid_dir + fid + "_valid"
+#             for case in case_name:
+#                 curr_train = train_dir + fid + case
+#                 ### For b1f0 and b2f0 unknown error ###
+#                 
+#                 #######
+#                 _, train_label, _ = data_and_label(curr_train)
+#                 origin = np.amin(train_label,axis=0)
+#                 _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
+#                 state_name = str(lr)+'_'+str(t)+'_'+fid+case+'.pt'
+#                 predict_output, label = predict_result(state_name, model, testloader, save_dir)
+#                 for size in range(len(predict_output)):
+#                     pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+#                 result.append(prediction_error(predict_output, label))
+#                 state_details.append([lr, t, fid, case])
 #     df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
 #     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
 #     pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
-# # =============================================================================
-# #     df = pd.DataFrame(result, columns = ['MEAN', 'MIN', 'MAX', 'VAR'])                
-# #     df[['LR','TRAIN_COUNT','FID','CASE']] = pd.DataFrame(state_details)
-# # =============================================================================
-#     df.to_csv('/home/wayne/wgan/uji_results.csv', index=False)
-#     pred_df.to_csv('/home/wayne/wgan/pred.csv')
+# 
+#     df.to_csv('/home/wayne/uji/uji_results.csv', index=False)
+#     pred_df.to_csv('/home/wayne/uji/pred.csv')
 # =============================================================================
     
   ### Run this first to combine ED of all floors together ###
@@ -592,66 +582,68 @@ if __name__ == '__main__':
 #   5. Change the main result.csv file
 # =============================================================================
     ##### Combine results #####
+    # lr = [0.0003]#[0.001, 0.0001, 0.0003]
+    # num_times = 5
+    # case_name = ['_extendedGAN+']#['_train', '_wgan', '_original_wgan', '_mix']
+    # floor_id = ['b0f0', 'b0f1', 'b0f2', 'b0f3']
+    # result_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/results/extendedGAN+/b0_results.csv"
+    # df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/results/extendedGAN+/uji_results.csv", header=0)
+    # #need to combine same lr, num and case name, then divide by total combined
+    # building_df = pd.DataFrame()
+    # for i in floor_id:
+    #     temp = df[df['FID'] == i]
+    #     building_df = building_df.append(temp, ignore_index=True)
+    #
+    # temp_id = []
+    # temp_avg = []
+    # for case in case_name:
+    #     for l in lr:
+    #         for num in range(num_times):
+    #             temp_df= building_df[(building_df['LR'] == l) & (building_df['TRAIN_COUNT'] == num)
+    #                                  & (building_df['CASE'] == case)]
+    #             temp_id.append([case, l, num])
+    #             temp_avg.append(temp_df[['MEAN','MIN','MAX','VAR']].mean(axis=0).tolist())
+    #
+    # df = pd.DataFrame(temp_id, columns = ['CASE', 'LR', 'TRAIN_COUNT'])
+    # df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(temp_avg)
+    # df.to_csv(result_dir, index =False)
+    
+  ### Run this to obtain a graph comparison between the same LR ###
+    ##### Plotting results #####
+    #each graph shows the same lr, plot name is the case name
+    #for individual floors
 # =============================================================================
-#     lr = [0.001, 0.0001, 0.0003]
-#     num_times = 5
-#     case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-#     floor_id = ['b2f0', 'b2f1', 'b2f2', 'b2f3', 'b2f4']
-#     result_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/UJI/csv_files/results/b2_result.csv"
-#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/UJI/csv_files/uji_results.csv", header=0)
-#     #need to combine same lr, num and case name, then divide by total combined
-#     building_df = pd.DataFrame()
-#     for i in floor_id:
-#         temp = df[df['FID'] == i]
-#         building_df = building_df.append(temp, ignore_index=True)
-#     
-#     temp_id = []
-#     temp_avg = []
-#     for case in case_name:
-#         for l in lr:
-#             for num in range(num_times):
-#                 temp_df= building_df[(building_df['LR'] == l) & (building_df['TRAIN_COUNT'] == num) 
-#                                      & (building_df['CASE'] == case)]
-#                 temp_id.append([case, l, num])
-# 
-#                 temp_avg.append(temp_df[['MEAN','MIN','MAX','VAR']].mean(axis=0).tolist())
-#     df = pd.DataFrame(temp_id, columns = ['CASE', 'LR', 'TRAIN_COUNT'])
-#     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(temp_avg)
-#     df.to_csv(result_dir, index =False)
-#     
-#   ### Run this to obtain a graph comparison between the same LR ###
-#     ##### Plotting results #####
-#     #each graph shows the same lr, plot name is the case name
-#     #for individual floors
 #     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/UJI/csv_files/uji_results.csv", header=0)
 #     df = df[df['FID'] == 'b2f4']
 #     bid = "Building 2 Floor 4"
 # =============================================================================
     
     #for grouping buildings
-    df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/UJI/csv_files/results/b2_result.csv", header = 0)
-    bid = "Building 2"
-    lr = [0.001, 0.0001, 0.0003]
-    case_name = ['_train', '_wgan', '_original_wgan', '_mix']
-    scenarios = ['_avg', '_min', '_max', '_var']
-    plot_dict = {}
-    
-    for l in lr:
-        for case in case_name:
-            selected_df = df[(df['LR'] == l) & (df['CASE'] == case)]
-
-            plot_dict[str(l)+case+scenarios[0]] = selected_df['MEAN'].tolist()
-            plot_dict[str(l)+case+scenarios[1]] = selected_df['MIN'].tolist()
-            plot_dict[str(l)+case+scenarios[2]] = selected_df['MAX'].tolist()
-            plot_dict[str(l)+case+scenarios[3]] = selected_df['VAR'].tolist()
-
-    for l in lr:
-        dict_keys = []
-        for sc in scenarios:
-            for case in case_name:
-                dict_keys.append(str(l)+case+sc)
-        result_compare_plot(plot_dict, dict_keys, scenarios, bid)
-
+# =============================================================================
+#     df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/results/extendedGAN+/uji_results.csv", header = 0)
+#     bid = "Building 0"
+#     lr = [0.0003]
+#     case_name = ['_extendedGAN+']#['_train', '_wgan', '_original_wgan', '_mix']
+#     scenarios = ['_avg', '_min', '_max', '_var']
+#     plot_dict = {}
+#     
+#     for l in lr:
+#         for case in case_name:
+#             selected_df = df[(df['LR'] == l) & (df['CASE'] == case)]
+# 
+#             plot_dict[str(l)+case+scenarios[0]] = selected_df['MEAN'].tolist()
+#             plot_dict[str(l)+case+scenarios[1]] = selected_df['MIN'].tolist()
+#             plot_dict[str(l)+case+scenarios[2]] = selected_df['MAX'].tolist()
+#             plot_dict[str(l)+case+scenarios[3]] = selected_df['VAR'].tolist()
+# 
+#     for l in lr:
+#         dict_keys = []
+#         for sc in scenarios:
+#             for case in case_name:
+#                 dict_keys.append(str(l)+case+sc)
+#         result_compare_plot(plot_dict, dict_keys, scenarios, bid)
+# 
+# =============================================================================
     
                 
     

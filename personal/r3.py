@@ -1,84 +1,56 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Mar  2 22:11:07 2022
+import csv
 
-@author: noxtu
-"""
-
-from torchvision import models
-import torch.nn as nn
-import torch 
-import torch.optim as optim
-import shutil
-import random
-import time
 import numpy as np
-import pandas as pd
 import os
+from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms
+from torch import nn, optim
+import torch
+import sys
+
+
+from pytorchtools import EarlyStopping
 from PIL import Image
-import csv  
+import pandas as pd
+import matplotlib.pyplot as plt
 
-class UnNormalize(object):
-    def __init__(self, mean, std):
-        self.mean = mean
-        self.std = std
 
-    def __call__(self, tensor):
-        """
-        Args:
-            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
-        Returns:
-            Tensor: Normalized image.
-        """
-        for t in tensor:
-            t.mul_(self.std).add_(self.mean)
-            # The normalize code -> t.sub_(m).div_(s)
-        return tensor
-    
+### Code flow ###
+# =============================================================================
+# 1. data_and_label(img folder directory) will retrieve image path, labels and image name
+# 2. The labels will be passed into scale_label to subtract from origin
+# 3. path_and_scaled_labels will then return the paths and scaled labels of training, validation, and testing dataset
+# 4. norm_image will return the mean and std required for normalising images (separately by training, validation, testing)
+# 5. load_image will load the images and normalize them using step 4 into dataloader
+# 6. normalize_input_and_load uses step 4 & 5 to return trainloader, validloader, and testloader
+# 7. define resnet18 model
+# 8. Train the model and save the model state
+# 9. predict_result takes in testing dataset, and using the saved model state, return predicted and true labels
+# 10. prediction_error will return the ED based on predicted output vs true labels
+# =============================================================================
+
 class ImageDataset(Dataset):
-    def __init__(self,img_path, label, transform):
-        self.transform=transform
-        #self.img_folder=img_folder
+    def __init__(self, img_path, label, transform):
+        self.transform = transform
+        # self.img_folder=img_folder
         self.img_path = img_path
         self.label = label
 
-#The __len__ function returns the number of samples in our dataset.
+    # The __len__ function returns the number of samples in our dataset.
     def __len__(self):
         return len(self.label)
- 
-    def __getitem__(self,index):
-     
-        image=Image.open(self.img_path[index],'r')
-        image=self.transform(image)
-        targets=self.label[index]
+
+    def __getitem__(self, index):
+        image = Image.open(self.img_path[index], 'r')
+        image = self.transform(image)
+        targets = self.label[index]
 
         return image, targets
-    
-def label_directory(img_path):
-    '''
-Purpose: Get all labels directory in a list (e.g. C://path/images/b0f0/[latitude_longitude])
-    Parameters
-    ----------
-    img_path : TYPE
-        DESCRIPTION.
 
-    Returns
-    -------
-    label_dir : list
-        labels directory
-
-    '''
-    label_dir = []
-    for root, dirs, files in os.walk(img_path, topdown=False):
-        for d in dirs:
-            label_dir.append(os.path.join(root, d))
-    return label_dir
 
 def data_and_label(img_folder):
     '''
-    Purpose: maps image path, image name, and labels together in list order
+
     Parameters
     ----------
     img_folder : string
@@ -109,11 +81,76 @@ def data_and_label(img_folder):
     label = np.array(label)
     return img_path, label, img_name
 
+
+def scale_label(train_label, valid_label, test_label):
+    """
+    Parameters
+    ----------
+
+    train_label : array
+        contains training labels(longitude and latitude) dataset
+    valid_label : array
+        contains validation labels(longitude and latitude) dataset
+    test_label : array
+        contains testing labels(longitude and latitude) dataset
+
+    Returns training, validation, and testing coordinate labels in an array
+    -------
+
+    Purpose: Scale dataset labels before training any model.
+    Output coordinates is scaled by subtracting the origin of the room (still in meters, hence does not need to convert back after prediction model)
+    """
+    origin = np.amin(train_label, axis=0)
+
+    scaled_train_labels = train_label - origin
+    scaled_test_labels = test_label - origin
+    scaled_valid_labels = valid_label - origin
+
+    return scaled_train_labels, scaled_valid_labels, scaled_test_labels
+
+
+def path_and_scaled_labels(train_dir, valid_dir, test_dir):
+    '''
+
+    Parameters
+    ----------
+    train_dir : string
+        training dataset images directory
+    valid_dir : string
+        validation dataset images directory
+    test_dir : string
+        testing dataset images directory
+
+    Returns
+    -------
+    train : array
+        scaled labelled training dataset coordinates
+    valid : array
+        scaled labelled validation dataset coordinates
+    test : array
+        scaled labelled testing dataset coordinates
+    train_path : list
+        path of all training dataset image name
+    valid_path : list
+        path of all validation dataset image name
+    test_path : list
+        path of all testing dataset image name
+
+    '''
+    train_path, train_label, _ = data_and_label(train_dir)
+    valid_path, valid_label, _ = data_and_label(valid_dir)
+    test_path, test_label, _ = data_and_label(test_dir)
+
+    train, valid, test = scale_label(train_label, valid_label, test_label)
+
+    return train, valid, test, train_path, valid_path, test_path
+
+
 def norm_image(path, label):
     '''
 
     Parameters
-    ----------       
+    ----------
     path : string
         directory of each image
     label : array
@@ -131,9 +168,11 @@ def norm_image(path, label):
     data_set = ImageDataset(path, label, transform)
     loader = DataLoader(data_set, batch_size=len(data_set))
     data = next(iter(loader))
+
     mean = data[0].mean()
     std = data[0].std()
     return mean, std
+
 
 def load_image(img_path, label, batch_size, mean, std, shuffle):
     '''
@@ -157,351 +196,374 @@ def load_image(img_path, label, batch_size, mean, std, shuffle):
     '''
 
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
-                                         transforms.ToTensor(),transforms.Normalize((mean),(std))])
+                                    transforms.ToTensor(), transforms.Normalize((mean), (std))])
     # , transforms.Normalize((mean),(std))
-    data_set=ImageDataset(img_path, label,transform)
-    dataloader = DataLoader(data_set,batch_size=batch_size,shuffle=shuffle, drop_last = True)
-    
+    data_set = ImageDataset(img_path, label, transform)
+
+    dataloader = DataLoader(data_set, batch_size=batch_size, shuffle=shuffle, drop_last=True, num_workers=0,
+                            pin_memory=True)
     return dataloader
 
-def load_by_label(label_dir, batch_size, shuffle=True):
+
+def normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size):
     '''
-Purpose: Get dataloader by individual label
+
     Parameters
     ----------
+    train_dir : string
+        training dataset images directory
+    valid_dir : string
+        validation dataset images directory
+    test_dir : string
+        testing dataset images directory
+    batch_size : int
+        batch size
+
+    Returns training, validation, and testing loader
+    -------
+
+    '''
+    train_label, valid_label, test_label, train_path, valid_path, test_path = path_and_scaled_labels(train_dir,
+                                                                                                     valid_dir,
+                                                                                                     test_dir)
+
+    train_mean, train_std = norm_image(train_path, train_label)
+    valid_mean, valid_std = norm_image(valid_path, valid_label)
+    test_mean, test_std = norm_image(test_path, test_label)
+
+    trainloader = load_image(train_path, train_label, batch_size, train_mean, train_std, True)
+    validloader = load_image(valid_path, valid_label, batch_size, valid_mean, valid_std, True)
+    testloader = load_image(test_path, test_label, batch_size, test_mean, test_std, False)
+
+    return trainloader, validloader, testloader
+
+
+def resnet18():
+    '''
+
+    Returns
+    -------
+    resnet18 : model
+        structure of the CNN model
+
+    '''
+    resnet18 = models.resnet18()
+    n_inputs = resnet18.fc.in_features
+    resnet18.fc = nn.Linear(n_inputs, 2)  # change last layer to 2 outputs
+    resnet18.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3),
+                               bias=False)  # change input depth from 3 to 1
+
+    return resnet18
+
+
+def train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir):
+    '''
+
+    Parameters
+    ----------
+    trainloader : tensor
+        contains training data
+    validloader : tensor
+        contains validation data
+    model : model
+        contains the training model
+    lr : float
+        learning rate
+    epochs : int
+        number of epochs
+    patience : int
+        patience for early stopping
+    state_name : string
+        saving model state
+
+    Returns
+    -------
+    None.
+
+    '''
+    train_on_gpu = torch.cuda.is_available()
+    if train_on_gpu:
+        model.cuda()
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    train_losses, valid_losses = [], []
+    # initialize tracker for minimum validation loss
+    valid_loss_min = np.Inf  # set initial "min" to infinity
+    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    torch.backends.cudnn.benchmark = True
+
+    for e in range(epochs):
+        total_train_loss = 0
+        total_valid_loss = 0
+        model.train()
+        for data, target in trainloader:
+            data = data.type(torch.FloatTensor)
+            target = target.type(torch.FloatTensor)
+            if train_on_gpu:
+                data, target = data.cuda(), target.cuda()
+
+            optimizer.zero_grad(set_to_none=True)
+            output = model(data)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
+            total_train_loss += loss.detach()
+
+        model.eval()
+        with torch.no_grad():
+            for data, target in validloader:
+                data = data.type(torch.FloatTensor)
+                target = target.type(torch.FloatTensor)
+                if train_on_gpu:
+                    data, target = data.cuda(), target.cuda()
+
+                output = model(data)
+                loss = criterion(output, target)
+                total_valid_loss += loss.detach()
+
+        train_loss = total_train_loss / len(trainloader.dataset)
+        valid_loss = total_valid_loss / len(validloader.dataset)
+        train_losses.append(train_loss)
+        valid_losses.append(valid_loss)
+
+        print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(
+            e + 1, train_loss, valid_loss))
+
+        # save model if validation loss has decreased
+        if valid_loss <= valid_loss_min:
+            print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model ...'.format(
+                valid_loss_min, valid_loss))
+            torch.save(model.state_dict(), save_dir + state_name)
+            valid_loss_min = valid_loss
+
+        early_stopping(valid_loss, model)
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+
+
+def predict_result(model_state, model, testloader, save_dir):
+    '''
+
+    Parameters
+    ----------
+    model_state : string
+        saved model state name
+    model : model
+        structure of training model
+    testloader : tensor
+        contains testing data
+
+    Returns
+    -------
+    predict_output : list
+        outputs of predicted coordinates
+    label : list
+        actual labels
+
+    '''
+    model.load_state_dict(torch.load(save_dir + model_state))
+    predict_output = np.empty((0, 2))
+    label = np.empty((0, 2))
+    if torch.cuda.is_available():
+        model.cuda()
+    with torch.no_grad():
+        model.eval()
+
+        for test_input, test_output in testloader:
+            test_input = test_input.type(torch.FloatTensor)
+            test_output = test_output.type(torch.FloatTensor)
+
+            if torch.cuda.is_available():
+                test_input, test_output = test_input.cuda(), test_output.cuda()
+            predict = model(test_input)
+            predict_output = np.append(predict_output, predict.cpu().numpy(), axis=0)
+            label = np.append(label, test_output.cpu().numpy(), axis=0)
+    return predict_output, label
+
+
+def prediction_error(predict_output, label):
+    '''
+
+    Parameters
+    ----------
+    predict_output : array
+        contains all testing prediction output
+    label : array
+        contains actual labels of testing dataset
+
+    Returns
+    -------
+    Print out the ED errors
+
+    '''
+    num_test_samples = len(predict_output)
+    error_NN = [None] * num_test_samples
+    for i in range(num_test_samples):
+        error_NN[i] = np.linalg.norm(predict_output[i] - label[i])
+    print('Average error: ', np.mean(error_NN),
+          '\nMinimum error:', np.amin(error_NN), '\nMaximum error:', np.amax(error_NN), '\nVariance:', np.var(error_NN))
+    result = [np.mean(error_NN), np.amin(error_NN), np.amax(error_NN), np.var(error_NN)]
+    return result
+
+
+def label_directory(img_path):
+    '''
+Purpose: Get all labels directory in a list
+    Parameters
+    ----------
+    img_path : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
     label_dir : TYPE
         DESCRIPTION.
-    batch_size : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    dataloader : TYPE
-        DESCRIPTION.
 
     '''
-    img_path, label, img_name = data_and_label(label_dir)
-    mean, std = norm_image(img_path, label)
-    dataloader = load_image(img_path, label, batch_size, mean, std, shuffle)
-    return dataloader, mean, std, img_name, label
-
-# For 23x23 images
-class UJI_Discriminator(nn.Module):
-    def __init__(self, channels_img, features_d):
-        super(UJI_Discriminator, self).__init__()
-        self.disc = nn.Sequential(
-            # input: N x channels_img x 23 x 23
-            nn.Conv2d(
-                channels_img, features_d*2, kernel_size=3, stride=2, padding=1
-            ), #64x12x12
-            nn.LeakyReLU(0.2),
-            # _block(in_channels, out_channels, kernel_size, stride, padding)
-            self._block(features_d*2, features_d * 4, 4, 2, 1), #128x6x6
-            self._block(features_d * 4, features_d * 8, 4, 2, 1), #256x3x3
-            # After all _block img output is 4x4 (Conv2d below makes into 1x1)
-            nn.Conv2d(features_d * 8, 1, kernel_size=3, stride=1, padding=0), # 1x1x1
-        )
-
-    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
-        return nn.Sequential(
-            nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride,
-                padding,
-                bias=False,
-            ),
-            nn.InstanceNorm2d(out_channels, affine=True),
-            nn.LeakyReLU(0.2),
-        )
-
-    def forward(self, x):
-        return self.disc(x)
-# Generator: noise > decreasing node + batchnorm + relu > feature critic layer (64) 
-class UJI_Generator(nn.Module):
-    def __init__(self, channels_noise, channels_img, features_g):
-        super(UJI_Generator, self).__init__()
-        self.net = nn.Sequential(
-            # Input: N x channels_noise x 1 x 1
-            self._block(channels_noise, features_g * 8, 3, 1, 0),  # img: 3x3
-            self._block(features_g * 8, features_g * 4, 4, 2, 1),  # img: 6x6
-            self._block(features_g * 4, features_g*2 , 4, 2, 1),  # img: 12x12
-            nn.ConvTranspose2d(
-                features_g*2, channels_img, kernel_size=3, stride=2, padding=1
-            ),
-            # Output: N x channels_img x 23x23
-            nn.Tanh(),
-        )
-
-    def _block(self, in_channels, out_channels, kernel_size, stride, padding):
-        return nn.Sequential(
-            nn.ConvTranspose2d(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride,
-                padding,
-                bias=False,
-            ),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-    
-def initialize_weights(model):
-    # Initializes weights for wgan-gp
-    for m in model.modules():
-        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.BatchNorm2d)):
-            nn.init.normal_(m.weight.data, 0.0, 0.02)
-            
-def gradient_penalty(critic, real, fake, device="cpu"):
-    BATCH_SIZE, C, H, W = real.shape
-    alpha = torch.rand((BATCH_SIZE, 1, 1, 1)).repeat(1, C, H, W).to(device)
-    interpolated_images = real * alpha + fake * (1 - alpha)
-
-    # Calculate critic scores
-    mixed_scores = critic(interpolated_images)
-
-    # Take the gradient of the scores with respect to the images
-    gradient = torch.autograd.grad(
-        inputs=interpolated_images,
-        outputs=mixed_scores,
-        grad_outputs=torch.ones_like(mixed_scores),
-        create_graph=True,
-        retain_graph=True,
-    )[0]
-    gradient = gradient.view(gradient.shape[0], -1)
-    gradient_norm = gradient.norm(2, dim=1)
-    gradient_penalty = torch.mean((gradient_norm - 1) ** 2)
-    return gradient_penalty
-
-def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir, 
-                     lr, batch, num_epoch, img_dim, img_channel, latent, critic_layer, gen_layer, critic_iter, gradient_p):
-    '''
-    Purpose: Training of WGAN-GP model
-
-    Parameters
-    ----------
-    model_state_dir : string
-        model state name to be saved as
-    data_dir : string
-        folder name with the training input images
-    dataset : string
-        define the type of dataset used (e.g. uji or ng)
-    lr : float
-        learning rate
-    batch : int
-        batch size
-    num_epoch : int
-        number of epochs
-    img_dim : int
-        image size
-    img_channel : int
-        number of channels (e.g. 1 for grayscale, 3 for rgb)
-    latent : int
-        latent noise
-    critic_layer : int
-        determine number of discriminator layer
-    gen_layer : int
-        determine number of generator layer
-    critic_iter : int
-        determine number of critic iterations
-    gradient_p : int
-        gradient penalty
-
-    Returns
-    -------
-    None.
-
-    '''
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dataloader, mean, std, _, _= load_by_label(data_dir, batch)
-    unorm = UnNormalize(mean = mean, std = std)
-        
-    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
-    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
-    gen.load_state_dict(torch.load(gen_model_state))
-    critic.load_state_dict(torch.load(disc_model_state))
-    
-        
-    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0,0.9))
-    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0,0.9))
-    gen.train()
-    critic.train()
-    critic_loss = []
-
-    for epoch in range(num_epoch):
-        # Target labels not needed
-        gen.train()
-        for batch_idx, (data, _) in enumerate(dataloader):
-            data = data.to(device)
-            cur_batch_size = data.shape[0]
-    
-            # Train Critic: max E[critic(real)] - E[critic(fake)]
-            for _ in range(critic_iter):
-                noise = torch.randn(cur_batch_size, latent, 1, 1).to(device)
-                fake = gen(noise)
-                critic_real = critic(data).reshape(-1)
-                critic_fake = critic(fake).reshape(-1)
-                gp = gradient_penalty(critic, data, fake, device=device)
-                loss_critic = (-(torch.mean(critic_real) - torch.mean(critic_fake)) + gradient_p * gp)
-                critic.zero_grad()
-                loss_critic.backward(retain_graph=True)
-                opt_critic.step()
-    
-    
-            # Train Generator: max E[critic(gen_fake)] <-> min -E[critic(gen_fake)]
-            gen_fake = critic(fake).reshape(-1)
-            loss_gen = -torch.mean(gen_fake)
-            gen.zero_grad()
-            loss_gen.backward()
-            opt_gen.step()
-         
-  
-            
-        # print(
-        #     "[Epoch: %d/%d] [Batch: %d/%d] [G loss: %f] [C loss: %f]"
-        #     % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen.detach(), loss_critic.detach())
-        # )
-        critic_loss.append(-loss_critic.detach())
-                        
-    torch.save(gen.state_dict(), save_state)
+    label_dir = []
+    for root, dirs, files in os.walk(img_path, topdown=False):
+        for d in dirs:
+            label_dir.append(os.path.join(root, d))
+    return label_dir
 
 
-def wgan_gp_train(gen_model_state, data_dir, lr, batch, num_epoch, img_channel, latent,
-                  critic_layer, gen_layer, critic_iter, gradient_p):
-    '''
-    Purpose: Training of WGAN-GP model
+def result_compare_plot(result, keys, scenarios, title_name):
+    naming = ['Average Error', 'Minimum Error', 'Maximum Error', 'Variance']
+    plot_color = ['-or', '-ob', '-oc', '-og', '-oy', '-om', '-ok']
+    key_count = 0
+    num_compare = int(len(keys) / len(scenarios))
 
-    Parameters
-    ----------
-    model_state_dir : string
-        model state name to be saved as
-    data_dir : string
-        folder name with the training input images
-    dataset : string
-        define the type of dataset used (e.g. uji or ng)
-    lr : float
-        learning rate
-    batch : int
-        batch size
-    num_epoch : int
-        number of epochs
-    img_dim : int
-        image size
-    img_channel : int
-        number of channels (e.g. 1 for grayscale, 3 for rgb)
-    latent : int
-        latent noise
-    critic_layer : int
-        determine number of discriminator layer
-    gen_layer : int
-        determine number of generator layer
-    critic_iter : int
-        determine number of critic iterations
-    gradient_p : int
-        gradient penalty
+    for i in range(len(naming)):
+        plt.figure(figsize=(10, 7))
+        for k in range(num_compare):
+            plt.plot(result[keys[key_count]], plot_color[k], label=keys[key_count])
 
-    Returns
-    -------
-    None.
-
-    '''
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    label_dir = label_directory(data_dir)
-    dataloader, mean, std, _, _ = load_by_label(label_dir[0], batch)
-    unorm = UnNormalize(mean=mean, std=std)
-    # =============================================================================
-    #     for i in range(len(label_dir)):
-    #         dataloader = load_by_label(label_dir[i], batch)
-    # =============================================================================
-    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
-    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
-    initialize_weights(gen)
-    initialize_weights(critic)
-
-    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0, 0.9))
-    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0, 0.9))
-    gen.train()
-    critic.train()
-    critic_loss = []
-
-    for epoch in range(num_epoch):
-        # Target labels not needed
-        gen.train()
-        for batch_idx, (data, _) in enumerate(dataloader):
-            data = data.to(device)
-            cur_batch_size = data.shape[0]
-
-            # Train Critic: max E[critic(real)] - E[critic(fake)]
-            for _ in range(critic_iter):
-                noise = torch.randn(cur_batch_size, latent, 1, 1).to(device)
-                fake = gen(noise)
-                critic_real = critic(data).reshape(-1)
-                critic_fake = critic(fake).reshape(-1)
-                gp = gradient_penalty(critic, data, fake, device=device)
-                loss_critic = (-(torch.mean(critic_real) - torch.mean(critic_fake)) + gradient_p * gp)
-                critic.zero_grad()
-                loss_critic.backward(retain_graph=True)
-                opt_critic.step()
-
-            # Train Generator: max E[critic(gen_fake)] <-> min -E[critic(gen_fake)]
-            gen_fake = critic(fake).reshape(-1)
-            loss_gen = -torch.mean(gen_fake)
-            gen.zero_grad()
-            loss_gen.backward()
-            opt_gen.step()
-
-        critic_loss.append(-loss_critic)
-
-    torch.save(gen.state_dict(), gen_model_state)
+            key_count += 1
+        plt.xlabel('Model state')
+        plt.ylabel(naming[i])
+        plt.title(title_name)
+        plt.legend(frameon=False)
 
 
-if __name__ == "__main__":
-    LEARNING_RATE =0.001 #0.001 (mnist)
-    BATCH_SIZE = 4 #32 (mnist), 8 for wgan-gp uji
-    IMAGE_SIZE = 23
-    CHANNELS_IMG = 1
-    Z_DIM = 100
-    NUM_EPOCHS = 1000
-    FEATURES_CRITIC = 64
-    FEATURES_GEN = 64
-    CRITIC_ITERATIONS = 5
-    LAMBDA_GP = 10
-    my_dpi = 96 # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
-    
-    gen_saved_state = '/home/SEANGLIDET/uji/FYP_data/model_states/gen_most_sample.pt'
-    disc_saved_state = '/home/SEANGLIDET/uji/FYP_data/model_states/disc_most_sample.pt'
-    
-    unique_loc = "b0f0" 
-    
-    data_dir = "/home/SEANGLIDET/uji/FYP_data/images/uji/ori_dirich/"+unique_loc
-    saved_state = "/home/SEANGLIDET/uji/FYP_data/model_states/UJI_without_TL/"+unique_loc
-    
-    if not os.path.exists(saved_state):
-        os.makedirs(saved_state)
-    NUM_EPOCHS = 500
-    label_dir = label_directory(data_dir)
-    
-    time_keeper = []
-    for i in range(0,20):
-        start = time.perf_counter()
-        curr_label = label_dir[i].split('/') #for linux 
-        save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
-        print("Starting ", curr_label[-1])
-        wgan_gp_train(save_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-        # wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE,
-        #                   CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-        end = time.perf_counter()
-        print("Appending data: ", [curr_label[-1], end-start])
-         
 
-        with open(r'{}.csv'.format(unique_loc), 'a', newline = '') as f:
-            writer = csv.writer(f)
-            writer.writerow([curr_label[-1], end-start])
 
-        
-  
+
+if __name__ == '__main__':
+##### Parameters #####
+##### Code for single runs #####
+    batch_size = 32
+    lr = 0.0003 #test for 0.001, 0.0001, 0.0003
+    epochs = 300
+    patience = 100 #old used 30
+    bfid = ["floor-1"]
+    pred = []
+    result = []
+    for b in bfid:
+        for i in range(3,4):
+            print(b,i)
+            state_name = "0.0003_"+str(i)+"_"+b+"_GAN+loc.pt"
+            save_dir = "/home/SEANGLIDET/ng/model_state/GAN+loc300/"+b+"/"
+            train_img_dir = "/home/SEANGLIDET/ng/images/localisation_300/"+b+"/"
+            valid_img_dir = "/home/SEANGLIDET/ng/images/valid_img/"+b+"_valid/"
+            test_img_dir = "/home/SEANGLIDET/ng/images/test_img/"+b+"_test/"
+            bsize = len(os.listdir(test_img_dir))
+
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            model = resnet18()
+            ##### Normalize data input and output. Load data. #####
+            trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
+            train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
+    #         _, _, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir,bsize)
+    #         predict_output, label = predict_result(state_name,model,testloader, save_dir)
+    #         _, train_label, _ = data_and_label(train_img_dir)
+    #         origin = np.amin(train_label,axis=0)
+    #         info = [b,i,"extendedGAN+"]
+    #         info.extend(prediction_error(predict_output, label))
+    #         result.append(info)
+    #         for size in range(len(predict_output)):
+    #             pred.append([b,i,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+    # pred_df = pd.DataFrame(pred, columns=['FID','TRAIN_NUM', 'PREDICTED_LONGITUDE', 'PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE', 'ACTUAL_LATITUDE'])
+    # pred_df.to_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/results/predicted/pred_extendedGAN+.csv", index=False)
+    # rdf = pd.DataFrame(result, columns = ['BFID', 'TRAIN_NUM', 'CASE', 'MEAN', 'MIN', 'MAX', 'VAR'])
+    # rdf.to_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/results/extendedGAN+_results.csv",index=False)
+
+            # result.insert(0,state_name)
+            # result.insert(0,i)
+            # result.insert(0,b)
+            # with open(r'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/results/rssi-based_results.csv', 'a', newline = '') as f:
+            #     writer = csv.writer(f)
+            #     writer.writerow(result)
+    ##### Prediction Error #####
+# =============================================================================
+#     num_train = 5
+#     batch_size = 24 #must check from test folder with smallest number of labels
+#     result = [] ### order: mean, min, max, var
+#     state_details = []### order: lr, train_num, fid, case
+#     pred = []
+#
+#     lr = 0.0003
+#     case_name = ['_mix']#['_train', '_wgan', '_original_wgan', '_mix']
+#     # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
+#     save_path = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/NG/final_localisation/mix/'
+#     floor_id = ['floor-1','floor1','floor2']#['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3', 'b2f0', 'b2f1', 'b2f2', 'b2f3', 'b2f4']
+#
+#
+#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/train_img/"
+#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/valid_img/"
+#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/test_img/"
+#     #solve the testloader
+#     next_list = 0
+#     curr_index = 0
+#
+#     model = resnet18()
+#     ### csv file: lr, train_num, fid, case, mean, min, max, var
+#
+#     for t in range(num_train):
+#         for fid in floor_id:
+#             print(fid)
+#             curr_test = test_dir + fid + "_test"
+#             curr_valid = valid_dir + fid + "_valid"
+#             for case in case_name:
+#                 curr_train = train_dir + fid + "_mix"
+#                 save_dir = save_path#save_dir = save_path + fid +"/"
+#
+#                 #######
+#                 _, train_label, _ = data_and_label(curr_train)
+#
+#                 origin = np.amin(train_label,axis=0)
+#                 _, _, testloader = normalize_input_and_load(curr_train, curr_valid, curr_test, batch_size)
+#                 state_name = str(lr)+'_'+str(t)+'_'+fid+case+'.pt'
+#                 predict_output, label = predict_result(state_name, model, testloader, save_dir)
+#                 for size in range(len(predict_output)):
+#                     pred.append([fid,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+#                 result.append(prediction_error(predict_output, label))
+#                 state_details.append([lr, t, fid, case])
+#     df = pd.DataFrame(state_details, columns = ['LR','TRAIN_COUNT','FID','CASE'])
+#     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
+#     pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
+#
+#     df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/uji_mix_results.csv', index=False)
+#     pred_df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/mix_pred.csv', index=False)
+
+# =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

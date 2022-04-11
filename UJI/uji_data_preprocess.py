@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 import os
 import matplotlib.pyplot as plt
 import shutil
+import random
 
 def uji_id(train_csv_dir):
     '''
@@ -256,26 +257,33 @@ def train_split(csv, csv_dir):
         temp.to_csv(csv_dir+"b2f"+str(fid)+"_train.csv", index=False)
         
 def combined_img():
-    floor_id = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
+    floor_id = ['b0f1']#['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
     for k in range(len(floor_id)):
-        ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/gan+/train_only/" + floor_id[k]+"/" #original image folder
-        aug_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/gan+/dirichlet/"+floor_id[k]+"/" #augmented image folder
-        new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/gan+/ori_dirich/"+floor_id[k]+"/" #new data image path
-        label_name = os.listdir(ori_dir)
-        if not os.path.exists(new_dir):
-            os.makedirs(new_dir)
-        for l in range(len(label_name)):
-            if not os.path.exists(new_dir+label_name[l]):
-                os.makedirs(new_dir+label_name[l])
+        ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/" + floor_id[k]+"_train/" #original image folder
+        aug_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/personal/train_img/" #augmented image folder
+        #new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/extendedGAN+/"+floor_id[k]+"_extendedWGAN+/" #new data image path
+        label_name = os.listdir(aug_dir)#os.listdir(ori_dir)
+
+# =============================================================================
+#         if not os.path.exists(new_dir):
+#             os.makedirs(new_dir)
+#         for l in range(len(label_name)):
+#             if not os.path.exists(new_dir+label_name[l]):
+#                 os.makedirs(new_dir+label_name[l])
+# =============================================================================
                 
         for i in range(len(label_name)):
+
             img_name = os.listdir(ori_dir+label_name[i])
             for img in img_name:
-                shutil.copy(ori_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/'+img)
-            if os.path.exists(aug_dir + label_name[i]):
-                img_name = os.listdir(aug_dir + label_name[i])
-                for img in img_name:
-                    shutil.copy(aug_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/dirich_'+img)
+                shutil.copy(ori_dir + label_name[i] + "/" + img, aug_dir+label_name[i]+'/'+img)
+# =============================================================================
+#             if os.path.exists(aug_dir + label_name[i]):
+#                 img_name = os.listdir(aug_dir + label_name[i])
+#                 #img_name = random.sample(img_name,temp_count)
+#                 for img in img_name:
+#                     shutil.copy(aug_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/dirich_'+img)
+# =============================================================================
     
         
 if __name__ == "__main__":
@@ -315,8 +323,8 @@ if __name__ == "__main__":
 # =============================================================================
     ### Input Parameters ###
 # =============================================================================
-#     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet/"
-#     fid = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
+#     csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/dirichlet_add/"
+#     fid = ['b2f0']#['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3','b2f0','b2f1', 'b2f2', 'b2f3', 'b2f4']
 #     train_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
 #     test_csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-testData.csv"
 #     img_dim = 23

@@ -438,10 +438,11 @@ if __name__ == '__main__':
     ##### Code for single runs #####
 # =============================================================================
 #     batch_size = 32
-#     lr = 0.001 #test for 0.001, 0.0001, 0.0003
-#     epochs = 300 
+#     lr = 0.0003 #test for 0.001, 0.0001, 0.0003
+#     epochs = 300
 #     patience = 100 #old used 30
-#     state_name = "resnet18.pt"
+#     train_num = 5
+#     state_name = "0.0003_.pt"
 #     # save_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/results/'
 #     # train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_train_wgan_equal"
 #     # valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/cnn_images/b0f0_valid"
@@ -450,6 +451,7 @@ if __name__ == '__main__':
 #     train_img_dir = "/home/wayne/wgan/uji_images/train_img/b0f0_train"
 #     valid_img_dir = "/home/wayne/wgan/uji_images/valid_img/b0f0_valid"
 #     test_img_dir = "/home/wayne/wgan/uji_images/test_img/b0f0_test"
+#
 #     model = resnet18()
 #     ##### Normalize data input and output. Load data. #####
 #     trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
@@ -461,50 +463,50 @@ if __name__ == '__main__':
     
     ##### Code for multiple runs #####
 # =============================================================================
-#     ##### Parameters #####
-#     num_train = 5
-#     batch_size = 32
-#     
-#     epochs = 300 
-#     patience = 100 #old used 30
-#     save_dir = '/home/wayne/ng/results/'
-#     # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
-#     model = resnet18()
-#     ### 4 types of training data for each unique building and floor [e.g. b0f0_original, b0f0_wgan, b0f0_original_wgan, b0f0_mix]
-# # =============================================================================
-# #   Image directory structure
-# # uji_images
-# #     train_img > b0f0_train, b0f0_wgan, b0f0_original_wgan, b0f0_mix
-# #     valid_img > b0f0_valid, b0f1_valid
-# #     test_img > b0f0_test, b0f1_test
-# # =============================================================================
-# # =============================================================================
-# #     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
-# #     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
-# #     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
-# # =============================================================================
-#     train_dir = "/home/wayne/ng/images/train_img/"
-#     valid_dir = "/home/wayne/ng/images/valid_img/"
-#     test_dir = "/home/wayne/ng/images/test_img/"
-#     
-# # =============================================================================
-# #     train_img_dir = os.listdir(train_dir)
-# #     valid_img_dir = os.listdir(valid_dir)
-# #     test_img_dir = os.listdir(test_dir)
-# # =============================================================================
-#     train_img_dir ='floor-1_train'
-#     valid_img_dir = 'floor-1_valid'
-#     test_img_dir = 'floor-1_test'
-#     lr = 0.001 #0.0001, 0.0003
-#     
-#     for i in range(num_train):
-#         state_name = str(lr)+'_'+ str(i)+'_'+train_img_dir+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
-#      
-#         trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir, 
-#                                                                         valid_dir + valid_img_dir, 
-#                                                                         test_dir + test_img_dir, batch_size)
-#         
-#         train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
+    ##### Parameters #####
+    num_train = 5
+    batch_size = 32
+
+    epochs = 300
+    patience = 100 #old used 30
+    save_dir = '/home/wayne/ng/results/'
+    # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/vpn/"
+    model = resnet18()
+    ### 4 types of training data for each unique building and floor [e.g. b0f0_original, b0f0_wgan, b0f0_original_wgan, b0f0_mix]
+# =============================================================================
+#   Image directory structure
+# uji_images
+#     train_img > b0f0_train, b0f0_wgan, b0f0_original_wgan, b0f0_mix
+#     valid_img > b0f0_valid, b0f1_valid
+#     test_img > b0f0_test, b0f1_test
+# =============================================================================
+# =============================================================================
+#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/train_img/"
+#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/valid_img/"
+#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/uji_images_vpn/test_img/"
+# =============================================================================
+    train_dir = "/home/wayne/ng/images/train_img/"
+    valid_dir = "/home/wayne/ng/images/valid_img/"
+    test_dir = "/home/wayne/ng/images/test_img/"
+
+# =============================================================================
+#     train_img_dir = os.listdir(train_dir)
+#     valid_img_dir = os.listdir(valid_dir)
+#     test_img_dir = os.listdir(test_dir)
+# =============================================================================
+    train_img_dir ='floor-1_train'
+    valid_img_dir = 'floor-1_valid'
+    test_img_dir = 'floor-1_test'
+    lr = 0.0003 #0.0001, 0.0003
+
+    for i in range(num_train):
+        state_name = str(lr)+'_'+ str(i)+'_'+train_img_dir+'.pt' #e.g. 0.001_0_b0f0_wgan.pt
+
+        trainloader, validloader, testloader = normalize_input_and_load(train_dir + train_img_dir,
+                                                                        valid_dir + valid_img_dir,
+                                                                        test_dir + test_img_dir, batch_size)
+
+        train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
 # =============================================================================
 
 

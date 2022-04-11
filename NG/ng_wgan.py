@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from torchvision import models
-from torchsummary import summary
+# from torchsummary import summary
 import torch.nn as nn
 import torch 
 import torch.optim as optim
 import shutil
 import random
 
-import sys
-sys.path.append("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/")
+# import sys
+# sys.path.append("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/")
 from util import *
 
 # For 19x19 images
@@ -420,7 +420,7 @@ if __name__ == "__main__":
     FEATURES_GEN = 64
     CRITIC_ITERATIONS = 5
     LAMBDA_GP = 10
-    num_gen = 150
+    num_gen = 400
     my_dpi = 96 # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
 # =============================================================================
 #     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/most_sample/' #for most labels
@@ -429,44 +429,41 @@ if __name__ == "__main__":
 # =============================================================================
     gen_saved_state = '/home/wayne/ng/gen_wgangpUJI-1000-0_001_4.pt'
     disc_saved_state = '/home/wayne/ng/disc_wgangpUJI-1000-0_001_4.pt'
+    # wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
+    #         FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+    unique_loc = ['floor-1','floor1','floor2']
+    for loc in range(len(unique_loc)):
 # =============================================================================
-#     wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
-#             FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+        data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/WGAN-GP+/train_img/'+unique_loc[loc]
+        gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/WGAN-GP+/generated_img/'+unique_loc[loc]
+        saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/NG/WGAN-GP+_model_states/'+unique_loc[loc]
 # =============================================================================
-# =============================================================================
-#     unique_loc = ['floor2']#,'floor1','floor2']
-#     for loc in range(len(unique_loc)):
-#         data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_only/'+unique_loc[loc]
-#         gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/wgan/'+unique_loc[loc]
-#         saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/wgan_model_states/'+unique_loc[loc]
-# # =============================================================================
-# #         data_dir = '/home/wayne/ng/images/train_only/'+unique_loc[loc]
-# #         gen_img_dir = '/home/wayne/ng/images/wgan/'+unique_loc[loc]
-# #         save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]
-# # =============================================================================
-#         
-#         if not os.path.exists(gen_img_dir):
-#             os.makedirs(gen_img_dir)
-#         # if not os.path.exists(save_state):
-#         #     os.makedirs(save_state)
-#         NUM_EPOCHS = 500
-#         label_dir = label_directory(data_dir)
-# 
-#         for i in range(197,407):#len(label_dir)):    
-#             curr_label = label_dir[i].split('\\')
-#             # save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]+'/'+str(curr_label[-1])+'.pt'
-#             save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
-#     
-#             # wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], dataset, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, 
-#             #                  CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-#             generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
-#===========================================================================
-# =============================================================================
+#         data_dir = '/home/wayne/ng/images/WGAN-GP+/train_img/'+unique_loc[loc]
+#         # gen_img_dir = '/home/wayne/ng/images/WGAN-GP+/generated_img/'+unique_loc[loc]
+#         save_state = '/home/wayne/ng/extendedGAN+_model_state/'+unique_loc[loc]
+        
+        if not os.path.exists(gen_img_dir):
+            os.makedirs(gen_img_dir)
+        # if not os.path.exists(save_state):
+        #     os.makedirs(save_state)
+        NUM_EPOCHS = 500
+        label_dir = label_directory(data_dir)
+
+        for i in range(len(label_dir)):    
+            curr_label = label_dir[i].split('\\')
+            # curr_label = label_dir[i].split('/')
+            # save_state = '/home/wayne/ng/wgan_model_states/'+unique_loc[loc]+'/'+str(curr_label[-1])+'.pt'
+            save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
+    
+            # wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE,
+            #                   CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+            generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
+# ==========================================================================
 #     save_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/NG/wgan_model_states/floor2/30040.490428222794_30306.64760825761.pt'
 #     label_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/NG/images/train_only/floor2/30040.490428222794_30306.64760825761'
 #     generate_wgan_img(150, save_state, label_dir, 100, 64, 1, 19, my_dpi, gen_img_dir)    
 # =============================================================================
-    split_img()
+    # split_img()
 
 
 

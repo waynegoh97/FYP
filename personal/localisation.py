@@ -168,6 +168,7 @@ def norm_image(path, label):
     data_set = ImageDataset(path, label, transform)
     loader = DataLoader(data_set, batch_size=len(data_set))
     data = next(iter(loader))
+
     mean = data[0].mean()
     std = data[0].std()
     return mean, std
@@ -445,71 +446,7 @@ def result_compare_plot(result, keys, scenarios, title_name):
         plt.legend(frameon=False)
 
 
-def normalize_input_and_load(train_dir, valid_dir, test_dir, batch_size):
-    '''
 
-    Parameters
-    ----------
-    train_dir : string
-        training dataset images directory
-    valid_dir : string
-        validation dataset images directory
-    test_dir : string
-        testing dataset images directory
-    batch_size : int
-        batch size
-
-    Returns training, validation, and testing loader
-    -------
-
-    '''
-    train_label, valid_label, test_label, train_path, valid_path, test_path = path_and_scaled_labels(train_dir,
-                                                                                                     valid_dir,
-                                                                                                     test_dir)
-
-    train_mean, train_std = norm_image(train_path, train_label)
-    valid_mean, valid_std = norm_image(valid_path, valid_label)
-    test_mean, test_std = norm_image(test_path, test_label)
-
-    trainloader = load_image(train_path, train_label, batch_size, train_mean, train_std, True)
-    validloader = load_image(valid_path, valid_label, batch_size, valid_mean, valid_std, True)
-    testloader = load_image(test_path, test_label, batch_size, test_mean, test_std, False)
-
-    return trainloader, validloader, testloader
-
-
-def data_and_label(img_folder):
-    '''
-
-    Parameters
-    ----------
-    img_folder : string
-        directory of images (e.g. ./cnn_images/b0f0_train_with_labels)
-
-    Returns
-    -------
-    img_path : list
-        contains image paths of all images in the folder
-    label : array
-        contains array of all labels
-
-    '''
-    img_path = []
-    label = []
-    img_name = []
-    for root, dirs, files in os.walk(img_folder, topdown=False):
-        for name in files:
-            temp = os.path.join(root, name)
-            temp = os.path.normpath(temp)
-            path = temp.split(os.sep)
-            path = path[-2].split("_")
-            path[0] = float(path[0])
-            path[1] = float(path[1])
-            label.append(path)
-            img_path.append(temp)
-            img_name.append(name)
-    label = np.array(label)
-    return img_path, label, img_name
 
 
 if __name__ == '__main__':
@@ -519,14 +456,29 @@ if __name__ == '__main__':
     lr = 0.0003 #test for 0.001, 0.0001, 0.0003
     epochs = 300
     patience = 100 #old used 30
-    bfid = ['b1f0']#["b0f0","b0f1", "b0f2", "b0f3", "b1f0","b1f1", "b1f2", "b1f3","b2f0","b2f1", "b2f2", "b2f3", "b2f4"]
+    bfid = 'F1Sa'#['F1Sa']#["b0f0","b0f1", "b0f2", "b0f3", "b1f0","b1f1", "b1f2", "b1f3","b2f0","b2f1", "b2f2", "b2f3", "b2f4"]
+    pred = []
+    result = []
+    # b = 'floor2'
+    # train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/WGAN-GP+/localisation_300/"+b+"/"
+    # valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/valid_img/"+b+"_valid/"
+    # test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/test_img/"+b+"_test/30048.562039859924_30334.7167331308/"
+    # _, train_label, _ = data_and_label(train_img_dir)
+    # print(np.amin(train_label,axis=0))
+
     for b in bfid:
-        for i in range(1):
-            state_name = "0.0003_"+str(i)+"_"+b+"_original.pt"
-            save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/original/"+b+"/"
-            train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/train/"+b+"/"
-            valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/valid/"+b+"/"
-            test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/test/"+b+"/"
+        for i in range(5):
+            print(b,i)
+            state_name = "0.0003_"+str(i)+"_"+b+"_train.pt"
+            save_dir = "/home/SEANGLIDET/n4/model_state/original/"+b+"/"
+            train_img_dir = "/home/SEANGLIDET/n4/images/original/train/" + bfid + "/"
+            valid_img_dir = "/home/SEANGLIDET/n4/images/original/valid/" + bfid + "/"
+            test_img_dir = "/home/SEANGLIDET/n4/images/original/test/" + bfid + "/"
+            # save_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/NG/final_localisation/extendedGAN+300/"+b+"/"
+            # train_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/WGAN-GP+/localisation_300/"+b+"/"
+            # valid_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/valid_img/"+b+"_valid/"
+            # test_img_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/test_img/"+b+"_test/"
+            # bsize = len(os.listdir(test_img_dir))
 
 
             if not os.path.exists(save_dir):
@@ -534,15 +486,28 @@ if __name__ == '__main__':
             model = resnet18()
             ##### Normalize data input and output. Load data. #####
             trainloader, validloader, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir, batch_size)
-            # train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
-            _, _, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir,24)
-            predict_output, label = predict_result(state_name,model,testloader, save_dir)
-            result = prediction_error(predict_output, label)
-            print(result)
+            train_model(trainloader, validloader, model, lr, epochs, patience, state_name, save_dir)
+    #         _, _, testloader = normalize_input_and_load(train_img_dir, valid_img_dir, test_img_dir,bsize)
+    #         for test_input, test_output in testloader:
+    #             print(test_input.shape)
+    #
+    #         predict_output, label = predict_result(state_name,model,testloader, save_dir)
+    #         _, train_label, _ = data_and_label(train_img_dir)
+    #         origin = np.amin(train_label,axis=0)
+    #         info = [b,i,"extendedGAN+300"]
+    #         info.extend(prediction_error(predict_output, label))
+    #         result.append(info)
+    #         for size in range(len(predict_output)):
+    #             pred.append([b,i,(predict_output[size][0]+origin[0]), (predict_output[size][1]+origin[1]), (label[size][0]+origin[0]), (label[size][1]+origin[1])])
+    # pred_df = pd.DataFrame(pred, columns=['FID','TRAIN_NUM', 'PREDICTED_LONGITUDE', 'PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE', 'ACTUAL_LATITUDE'])
+    # pred_df.to_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/pred_extendedGAN+300.csv", index=False)
+    # rdf = pd.DataFrame(result, columns = ['BFID', 'TRAIN_NUM', 'CASE', 'MEAN', 'MIN', 'MAX', 'VAR'])
+    # rdf.to_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/extendedGAN+300_results.csv",index=False)
+
             # result.insert(0,state_name)
             # result.insert(0,i)
             # result.insert(0,b)
-            # with open(r'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/results/results.csv', 'a', newline = '') as f:
+            # with open(r'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/results/rssi-based_results.csv', 'a', newline = '') as f:
             #     writer = csv.writer(f)
             #     writer.writerow(result)
     ##### Prediction Error #####
@@ -556,13 +521,13 @@ if __name__ == '__main__':
 #     lr = 0.0003
 #     case_name = ['_mix']#['_train', '_wgan', '_original_wgan', '_mix']
 #     # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/csv_files/UJI-trainingData.csv"
-#     save_path = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/UJI/latest/mix/'
-#     floor_id = ['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3', 'b2f0', 'b2f1', 'b2f2', 'b2f3', 'b2f4']
+#     save_path = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/NG/final_localisation/mix/'
+#     floor_id = ['floor-1','floor1','floor2']#['b0f0', 'b0f1', 'b0f2', 'b0f3', 'b1f0', 'b1f1', 'b1f2', 'b1f3', 'b2f0', 'b2f1', 'b2f2', 'b2f3', 'b2f4']
 #
 #
-#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/train_img/"
-#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/valid_img/"
-#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/UJI/images/test_img/"
+#     train_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/train_img/"
+#     valid_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/valid_img/"
+#     test_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/test_img/"
 #     #solve the testloader
 #     next_list = 0
 #     curr_index = 0
@@ -577,7 +542,7 @@ if __name__ == '__main__':
 #             curr_valid = valid_dir + fid + "_valid"
 #             for case in case_name:
 #                 curr_train = train_dir + fid + "_mix"
-#                 save_dir = save_path + fid +"/"
+#                 save_dir = save_path#save_dir = save_path + fid +"/"
 #
 #                 #######
 #                 _, train_label, _ = data_and_label(curr_train)
@@ -594,8 +559,9 @@ if __name__ == '__main__':
 #     df[['MEAN', 'MIN', 'MAX', 'VAR']] = pd.DataFrame(result)
 #     pred_df = pd.DataFrame(pred, columns = ['FID', 'PREDICTED_LONGITUDE','PREDICTED_LATITUDE', 'ACTUAL_LONGITUDE','ACTUAL_LATITUDE'])
 #
-#     df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/results/uji_mix_results.csv', index=False)
-#     pred_df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/results/mix_pred.csv', index=False)
+#     df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/uji_mix_results.csv', index=False)
+#     pred_df.to_csv('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/final_results/mix_pred.csv', index=False)
+
 # =============================================================================
 
 

@@ -1,30 +1,210 @@
 # -*- coding: utf-8 -*-
-from torchvision import models
-from torchsummary import summary
+import csv
+
+import torchvision
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms
 import torch.nn as nn
-import torch 
+import torch
 import torch.optim as optim
 import shutil
 import random
-
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import os
+from PIL import Image
 import sys
 sys.path.append("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/")
 from util import *
 
-# For 18x18 images
-class N4_Discriminator(nn.Module):
+
+
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t in tensor:
+            t.mul_(self.std).add_(self.mean)
+            # The normalize code -> t.sub_(m).div_(s)
+        return tensor
+
+
+class ImageDataset(Dataset):
+    def __init__(self, img_path, label, transform):
+        self.transform = transform
+        # self.img_folder=img_folder
+        self.img_path = img_path
+        self.label = label
+
+    # The __len__ function returns the number of samples in our dataset.
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, index):
+        image = Image.open(self.img_path[index], 'r')
+        image = self.transform(image)
+        targets = self.label[index]
+
+        return image, targets
+
+
+def label_directory(img_path):
+    '''
+Purpose: Get all labels directory in a list (e.g. C://path/images/b0f0/[latitude_longitude])
+    Parameters
+    ----------
+    img_path : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    label_dir : list
+        labels directory
+
+    '''
+    label_dir = []
+    for root, dirs, files in os.walk(img_path, topdown=False):
+        for d in dirs:
+            label_dir.append(os.path.join(root, d))
+    return label_dir
+
+
+def data_and_label(img_folder):
+    '''
+    Purpose: maps image path, image name, and labels together in list order
+    Parameters
+    ----------
+    img_folder : string
+        directory of images (e.g. ./cnn_images/b0f0_train_with_labels)
+
+    Returns
+    -------
+    img_path : list
+        contains image paths of all images in the folder
+    label : array
+        contains array of all labels
+
+    '''
+    img_path = []
+    label = []
+    img_name = []
+    for root, dirs, files in os.walk(img_folder, topdown=False):
+        for name in files:
+            temp = os.path.join(root, name)
+            temp = os.path.normpath(temp)
+            path = temp.split(os.sep)
+            path = path[-2].split("_")
+            path[0] = float(path[0])
+            path[1] = float(path[1])
+            label.append(path)
+            img_path.append(temp)
+            img_name.append(name)
+    label = np.array(label)
+    return img_path, label, img_name
+
+
+def norm_image(path, label):
+    '''
+
+    Parameters
+    ----------
+    path : string
+        directory of each image
+    label : array
+        scaled labels
+
+    Returns
+    -------
+    mean : float
+        mean value of all the images
+    std : TYPE
+        standard deviation of all the images
+
+    '''
+    transform = transforms.Compose([transforms.ToTensor()])
+    data_set = ImageDataset(path, label, transform)
+    loader = DataLoader(data_set, batch_size=len(data_set))
+    data = next(iter(loader))
+    mean = data[0].mean()
+    std = data[0].std()
+    return mean, std
+
+
+def load_image(img_path, label, batch_size, mean, std, shuffle):
+    '''
+    Parameters
+    ----------
+    img_path : string
+        directory of dataset used
+    batch_size : int
+        batch size
+    mean : float
+        mean of overall input data
+    std : float
+        standard deviation of overall input data
+    shuffle : boolean
+        shuffle dataloader or not
+
+    Returns
+    -------
+    dataloader
+
+    '''
+
+    transform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
+                                    transforms.ToTensor(), transforms.Normalize((mean), (std))])
+    # , transforms.Normalize((mean),(std))
+    data_set = ImageDataset(img_path, label, transform)
+    dataloader = DataLoader(data_set, batch_size=batch_size, shuffle=shuffle, drop_last=True)
+
+    return dataloader
+
+
+def load_by_label(label_dir, batch_size, shuffle=True):
+    '''
+Purpose: Get dataloader by individual label
+    Parameters
+    ----------
+    label_dir : TYPE
+        DESCRIPTION.
+    batch_size : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    dataloader : TYPE
+        DESCRIPTION.
+
+    '''
+    img_path, label, img_name = data_and_label(label_dir)
+    mean, std = norm_image(img_path, label)
+    dataloader = load_image(img_path, label, batch_size, mean, std, shuffle)
+    return dataloader, mean, std, img_name, label
+
+# For 23x23 images
+class UJI_Discriminator(nn.Module):
     def __init__(self, channels_img, features_d):
-        super(N4_Discriminator, self).__init__()
+        super(UJI_Discriminator, self).__init__()
         self.disc = nn.Sequential(
             # input: N x channels_img x 18 x 18
             nn.Conv2d(
-                channels_img, features_d*2, kernel_size=2, stride=2, padding=1
-            ), #64x10x10
+                channels_img, features_d * 2, kernel_size=2, stride=2, padding=0
+            ),  # 64x9x9
             nn.LeakyReLU(0.2),
             # _block(in_channels, out_channels, kernel_size, stride, padding)
-            self._block(features_d*2, features_d * 4, 4, 2, 1), #128x5x5
-            self._block(features_d * 4, features_d * 8, 3, 2, 1), #256x3x3
-            nn.Conv2d(features_d * 8, 1, kernel_size=3, stride=1, padding=0), # 1x1x1
+            self._block(features_d * 2, features_d * 4, 3, 2, 1),  # 128x5x5
+            self._block(features_d * 4, features_d * 8, 3, 2, 0),  # 256x2x2
+            # After all _block img output is 4x4 (Conv2d below makes into 1x1)
+            nn.Conv2d(features_d * 8, 1, kernel_size=2, stride=1, padding=0),  # 1x1x1
         )
 
     def _block(self, in_channels, out_channels, kernel_size, stride, padding):
@@ -44,16 +224,18 @@ class N4_Discriminator(nn.Module):
     def forward(self, x):
         return self.disc(x)
 
-class N4_Generator(nn.Module):
+
+# Generator: noise > decreasing node + batchnorm + relu > feature critic layer (64)
+class UJI_Generator(nn.Module):
     def __init__(self, channels_noise, channels_img, features_g):
-        super(N4_Generator, self).__init__()
+        super(UJI_Generator, self).__init__()
         self.net = nn.Sequential(
             # Input: N x channels_noise x 1 x 1
-            self._block(channels_noise, features_g * 8, 3, 1, 0),  # img: 3x3
-            self._block(features_g * 8, features_g * 4, 3, 2, 1),  # img: 5x5
-            self._block(features_g * 4, features_g*2 , 4, 2, 1),  # img: 10x10
+            self._block(channels_noise, features_g * 8, 2, 1, 0),  # img: 2x2
+            self._block(features_g * 8, features_g * 4, 3, 2, 0),  # img: 5x5
+            self._block(features_g * 4, features_g * 2, 3, 2, 1),  # img: 9x9
             nn.ConvTranspose2d(
-                features_g*2, channels_img, kernel_size=2, stride=2, padding=1
+                features_g * 2, channels_img, kernel_size=2, stride=2, padding=0
             ),
             # Output: N x channels_img x 18x18
             nn.Tanh(),
@@ -75,13 +257,15 @@ class N4_Generator(nn.Module):
 
     def forward(self, x):
         return self.net(x)
-    
+
+
 def initialize_weights(model):
     # Initializes weights for wgan-gp
     for m in model.modules():
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.BatchNorm2d)):
             nn.init.normal_(m.weight.data, 0.0, 0.02)
-            
+
+
 def gradient_penalty(critic, real, fake, device="cpu"):
     BATCH_SIZE, C, H, W = real.shape
     alpha = torch.rand((BATCH_SIZE, 1, 1, 1)).repeat(1, C, H, W).to(device)
@@ -102,8 +286,10 @@ def gradient_penalty(critic, real, fake, device="cpu"):
     gradient_norm = gradient.norm(2, dim=1)
     gradient_penalty = torch.mean((gradient_norm - 1) ** 2)
     return gradient_penalty
-    
-def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_epoch, img_dim, img_channel, latent, critic_layer, gen_layer, critic_iter, gradient_p):
+
+
+def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_epoch, img_dim, img_channel, latent,
+                  critic_layer, gen_layer, critic_iter, gradient_p):
     '''
     Purpose: Training of WGAN-GP model
 
@@ -143,31 +329,30 @@ def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_ep
     '''
     device = "cuda" if torch.cuda.is_available() else "cpu"
     label_dir = label_directory(data_dir)
-    dataloader, mean, std, _, _= load_by_label(label_dir[0], batch)
-    unorm = UnNormalize(mean = mean, std = std)
-# =============================================================================
-#     for i in range(len(label_dir)):
-#         dataloader = load_by_label(label_dir[i], batch)
-# =============================================================================
-    gen = N4_Generator(latent, img_channel, gen_layer).to(device) 
-    critic = N4_Discriminator(img_channel, critic_layer).to(device)
+    dataloader, mean, std, _, _ = load_by_label(label_dir[0], batch)
+    unorm = UnNormalize(mean=mean, std=std)
+    # =============================================================================
+    #     for i in range(len(label_dir)):
+    #         dataloader = load_by_label(label_dir[i], batch)
+    # =============================================================================
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
+    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
     initialize_weights(gen)
     initialize_weights(critic)
-    
-    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0,0.9))
-    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0,0.9))
+
+    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0, 0.9))
+    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0, 0.9))
     gen.train()
     critic.train()
     critic_loss = []
 
-    
     for epoch in range(num_epoch):
         # Target labels not needed
         gen.train()
         for batch_idx, (data, _) in enumerate(dataloader):
             data = data.to(device)
             cur_batch_size = data.shape[0]
-    
+
             # Train Critic: max E[critic(real)] - E[critic(fake)]
             for _ in range(critic_iter):
                 noise = torch.randn(cur_batch_size, latent, 1, 1).to(device)
@@ -179,43 +364,36 @@ def wgan_gp_train(gen_model_state, disc_model_state, data_dir, lr, batch, num_ep
                 critic.zero_grad()
                 loss_critic.backward(retain_graph=True)
                 opt_critic.step()
-    
-    
+
             # Train Generator: max E[critic(gen_fake)] <-> min -E[critic(gen_fake)]
             gen_fake = critic(fake).reshape(-1)
             loss_gen = -torch.mean(gen_fake)
             gen.zero_grad()
             loss_gen.backward()
             opt_gen.step()
-         
-  
-            
+
         print(
             "[Epoch: %d/%d] [Batch: %d/%d] [G loss: %f] [C loss: %f]"
-            % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen, loss_critic)
+            % (epoch + 1, num_epoch, batch_idx + 1, len(dataloader), loss_gen, loss_critic)
         )
         critic_loss.append(-loss_critic)
-            
-        if epoch%20 == 0:
-            with torch.no_grad():
-                gen.eval()
-                noise = torch.randn(1, latent, 1, 1).to(device)
-                fake = gen(noise).detach().cpu()
-                imshow(unorm(fake))
-                
+
+        # if epoch % 20 == 0:
+        #     with torch.no_grad():
+        #         gen.eval()
+        #         noise = torch.randn(1, latent, 1, 1).to(device)
+        #         fake = gen(noise).detach().cpu()
+        #         imshow(unorm(fake))
+
 
     torch.save(gen.state_dict(), gen_model_state)
     torch.save(critic.state_dict(), disc_model_state)
-    plt.figure(figsize=(10, 7))
-    plt.plot(critic_loss, label='Training')
-    plt.xlabel('Epoch')
-    plt.ylabel('Negative Critic Loss')
-    plt.title('Critic plot')
-    plt.legend(frameon=False)
-    
-        
-def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir, 
-                     lr, batch, num_epoch, img_dim, img_channel, latent, critic_layer, gen_layer, critic_iter, gradient_p):
+
+
+
+def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
+                     lr, batch, num_epoch, img_channel, latent, critic_layer, gen_layer, critic_iter,
+                     gradient_p):
     '''
     Purpose: Training of WGAN-GP model
 
@@ -254,29 +432,26 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
 
     '''
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dataloader, mean, std, _, _= load_by_label(data_dir, batch)
-    unorm = UnNormalize(mean = mean, std = std)
-        
-    gen = N4_Generator(latent, img_channel, gen_layer).to(device)
-    critic = N4_Discriminator(img_channel, critic_layer).to(device)
+    dataloader, mean, std, _, _ = load_by_label(data_dir, batch)
+    unorm = UnNormalize(mean=mean, std=std)
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
+    critic = UJI_Discriminator(img_channel, critic_layer).to(device)
     gen.load_state_dict(torch.load(gen_model_state))
     critic.load_state_dict(torch.load(disc_model_state))
-    
-        
-    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0,0.9))
-    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0,0.9))
+
+    opt_gen = optim.Adam(gen.parameters(), lr=lr, betas=(0.0, 0.9))
+    opt_critic = optim.Adam(critic.parameters(), lr=lr, betas=(0.0, 0.9))
     gen.train()
     critic.train()
     critic_loss = []
 
-    
     for epoch in range(num_epoch):
         # Target labels not needed
         gen.train()
         for batch_idx, (data, _) in enumerate(dataloader):
             data = data.to(device)
             cur_batch_size = data.shape[0]
-    
+
             # Train Critic: max E[critic(real)] - E[critic(fake)]
             for _ in range(critic_iter):
                 noise = torch.randn(cur_batch_size, latent, 1, 1).to(device)
@@ -288,135 +463,154 @@ def wgan_gp_pretrain(save_state, gen_model_state, disc_model_state, data_dir,
                 critic.zero_grad()
                 loss_critic.backward(retain_graph=True)
                 opt_critic.step()
-    
-    
+
             # Train Generator: max E[critic(gen_fake)] <-> min -E[critic(gen_fake)]
             gen_fake = critic(fake).reshape(-1)
             loss_gen = -torch.mean(gen_fake)
             gen.zero_grad()
             loss_gen.backward()
             opt_gen.step()
-         
-  
-            
+
         print(
             "[Epoch: %d/%d] [Batch: %d/%d] [G loss: %f] [C loss: %f]"
-            % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen.item(), loss_critic.item())
+            % (epoch+1, num_epoch, batch_idx+1, len(dataloader), loss_gen.detach(), loss_critic.detach())
         )
-        critic_loss.append(-loss_critic.item())
-                        
+        critic_loss.append(-loss_critic.detach())
+
     torch.save(gen.state_dict(), save_state)
-    
+
+
+
 def generate_wgan_img(num_iter, model_state_dir, data_dir, latent, gen_layer, img_channel, px, my_dpi, save_dir):
-    #generate wgan-gp images for after training
+    # generate wgan-gp images for after training
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    gen = N4_Generator(latent, img_channel, gen_layer).to(device)
+    gen = UJI_Generator(latent, img_channel, gen_layer).to(device)
     gen.load_state_dict(torch.load(model_state_dir))
     gen.eval()
-    
-    # label_dir = label_directory(data_dir)
+
     _, mean, std, _, _ = load_by_label(data_dir, 1)
-    unorm = UnNormalize(mean = mean, std = std)
+    unorm = UnNormalize(mean=mean, std=std)
     curr_label = data_dir.split('\\')
-    directory = save_dir+'/'+str(curr_label[-1])
+    directory = save_dir + '/' + str(curr_label[-1])
+    # directory = save_dir+'/'+curr_label
     if not os.path.exists(directory):
         os.makedirs(directory)
     for i in range(num_iter):
         noise = torch.randn(1, latent, 1, 1).to(device)
         fake = gen(noise).detach().cpu()
-        # imshow(unorm(fake))
-        imsave(unorm(fake), save_dir+'/'+str(curr_label[-1])+'/'+str(i)+'.png', px, my_dpi)
-        
-def split_img():
-    ### arrange training datas by shfting images into 3 cases
-    num_img = 150
-    case_name = ['_wgan', '_original_wgan', '_mix'] #floor id followed by case name
-    ### Find floor id ###
-    floor_id = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
-    ######
-    for k in range(len(floor_id)):
-        for i in range(len(case_name)):
-            ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/train_img/" + floor_id[k]+"_train/" #original image folder
-            aug_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/wgan/"+floor_id[k]+"/" #augmented image folder
-            new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/train_img/"+floor_id[k]+case_name[i]+"/" #new data image path
-            
-            
-            label_name = os.listdir(ori_dir)
-            if not os.path.exists(new_dir):
-                os.makedirs(new_dir)
-            for l in range(len(label_name)):
-                if not os.path.exists(new_dir+label_name[l]):
-                    os.makedirs(new_dir+label_name[l])
-                    
-            if i == 0:
-                for i in range(len(label_name)):
-                    img_name = os.listdir(aug_dir + label_name[i])
-                    for img in img_name:
-                        shutil.copy(aug_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/wgan_'+img)
-            if i == 1: 
-                for i in range(len(label_name)):
-                    img_name = os.listdir(ori_dir+label_name[i])
-                    for img in img_name:
-                        shutil.copy(ori_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/'+img)
-                    img_name = os.listdir(aug_dir + label_name[i])
-                    for img in img_name:
-                        shutil.copy(aug_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/wgan_'+img)
-            if i == 2:
-                file_size = []
-                for i in range(len(label_name)):
-                    img_name = os.listdir(ori_dir+label_name[i])
-                        
-                    file_size.append(len(img_name))
-                    for img in img_name:
-                        shutil.copy(ori_dir + label_name[i] + "/" + img, new_dir+label_name[i]+'/'+img)
-                aug_img = [150-x for x in file_size]
-                
-                for i in range(len(label_name)):
-                    img_names = os.listdir(aug_dir+label_name[i])
-                    selected = random.sample(img_names, aug_img[i])
-                    for file in selected:
-                        shutil.copy(aug_dir+label_name[i]+'/'+file, new_dir+label_name[i]+'/wgan_'+file)
-                        
-def find_max():
-    '''
-    Purpose: Find the location of max number of samples
+        imsave(unorm(fake), save_dir + '/' + str(curr_label[-1]) + '/' + str(i) + '.png', px, my_dpi)
+        # imsave(unorm(fake), save_dir+'/'+curr_label+'/'+str(i)+'.png', px, my_dpi)
 
-    Returns
-    -------
-    None.
+def imsave(imgs, save_dir, px, my_dpi):
+    #save images according to defined pixel
+    imgs = torchvision.utils.make_grid(imgs, normalize=False)
+    npimgs = imgs.numpy()
+    fig = plt.figure(figsize = (px/my_dpi,px/my_dpi), dpi=my_dpi, frameon = False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # plt.imsave('C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/UJI_python/test.png',np.transpose(npimgs, (1,2,0)), cmap='gray')
+    plt.imshow(np.transpose(npimgs, (1,2,0)), cmap = "Greys_r")
+    fig.savefig(save_dir, dpi=my_dpi)
+    fig.clf()
+    plt.clf()
+    plt.cla()
+    plt.close(fig)
 
-    '''
-    train_file = ['trainingData_F1Sa', 'trainingData_F1Sb', 'trainingData_F2Sa', 'trainingData_F2Sb']
-    csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/csv_files/"
-    max_count = 0
-    for i in train_file:
-        csv = csv_dir+i+".csv"
-        df= pd.read_csv(csv,header=0)
-        unique = df.groupby(["x","y"]).size().reset_index().rename(columns={0:'count'})
-        if max_count < unique['count'].max():
-            idx = unique['count'].idxmax()
-            x = unique.iloc[idx,0]
-            y = unique.iloc[idx,1]
-            max_count = unique['count'].max()
-            file = i
-    print(file,x,y,max_count)
-        
+
+def abs_diff_gen(ori_dir, gen_dir, img_dim, ori_diff):
+    # Loading data
+
+    ori_dataloader, _, _, _, _ = load_by_label(ori_dir, 1, False)
+    gen_dataloader, _, _, gen_img_name, gen_label = load_by_label(gen_dir, 1, False)
+    # Extract tensors of images and turn it into array
+    ori_list = []
+    gen_list = []
+    gen_abs_diff_dict = {}
+    for batch_idx, (data, _) in enumerate(ori_dataloader):
+        ori_list.append(data.numpy())
+    for batch_idx, (data, _) in enumerate(gen_dataloader):
+        gen_list.append(data.numpy())
+    ori_list = np.array(ori_list).reshape((-1, img_dim, img_dim))
+    gen_list = np.array(gen_list).reshape((-1, img_dim, img_dim))
+    # Find the abs diff of each generated images against all original images
+    for k in range(len(gen_list)):
+        result = []
+        diff = []
+        for ori in range(len(ori_list)):
+            result.append(np.absolute(ori_list[ori] - gen_list[k]))
+        for i in range(len(result)):
+            diff.append(np.array(result[i]).sum())
+        gen_abs_diff_dict[gen_img_name[k]] = diff
+
+    # Find the min diff for each generated images [list contains min diff in image order (e.g. 0.png, 1.png...)]
+    min_list = []
+    img_name = []
+    for i in range(len(gen_list)):
+        # min_list.append(sum(gen_abs_diff_dict[str(i)+'.png'])/len(gen_abs_diff_dict[str(i)+'.png']))
+        if str(i) + '.png' in gen_abs_diff_dict:
+            min_list.append(min(gen_abs_diff_dict[str(i) + '.png']))
+            img_name.append(str(i) + '.png')
+    dict_col = {'img_name': img_name, 'abs_score': min_list}
+    df = pd.DataFrame(dict_col)
+    df = df[df['abs_score'] <= (ori_diff)]
+    #df = df.sort_values(by=['abs_score'], ignore_index=True)
+    dfa = np.array(df.iloc[:len(df), 0])
+    # =============================================================================
+    #     for rename in range(20):
+    #         new_name = 'new_'+str(rename)+'.png'
+    #         os.rename(gen_dir + '/' +df.iloc[rename,0], gen_dir +'/'+new_name)
+    # =============================================================================
+    return dfa
+
+
+def abs_diff_ori(ori_dir, img_dim):
+    ori_dataloader, _, _, _, _ = load_by_label(ori_dir, 1, False)
+    ori_list = []
+    for batch_idx, (data, _) in enumerate(ori_dataloader):
+        ori_list.append(data.numpy())
+    ori_list = np.array(ori_list).reshape((-1, img_dim, img_dim))
+
+    result = []
+    diff = []
+    for ori in range(len(ori_list)):
+        for i in range(len(ori_list) - (ori + 1)):
+            result.append(np.absolute(ori_list[ori] - ori_list[ori + i + 1]))
+
+        for i in range(len(result)):
+            diff.append(np.array(result[i]).sum())
+
+    max_diff = max(diff)
+    return max_diff
+
+def overall_threshold(loclist, csvdir):
+    size = 0
+    threshold = 0
+    for bfid in loclist:
+        df = pd.read_csv(csvdir+bfid+".csv",header=0)
+        size+= len(df)
+        temp_th =  df["max_threshold"].sum()
+        threshold+= temp_th
+    threshold = threshold/size
+    return threshold
+
+
 if __name__ == "__main__":
-# =============================================================================
-#     1. Checking GAN model
-# =============================================================================
-# =============================================================================
-#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#     critic = N4_Discriminator(1, 64).to(device)
-#     gen = N4_Generator(100, 1, 64).to(device) 
-#     summary(critic, (1,18,18))
-#     summary(gen, (100,1,1))
-# =============================================================================
-# =============================================================================
-# 
-# =============================================================================
-    LEARNING_RATE =0.001 #0.001 (mnist)
-    BATCH_SIZE = 4 #32 (mnist), 8 for wgan-gp uji
+    # =============================================================================
+    #     1. Checking GAN model
+    # =============================================================================
+    # =============================================================================
+    #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #     critic = NG_Discriminator(1, 64).to(device)
+    #     gen = NG_Generator(100, 1, 64).to(device)
+    #     summary(critic, (1,19,19))
+    #     summary(gen, (100,1,1))
+    # =============================================================================
+    # =============================================================================
+    #   2. WGAN-GP training for most sample
+    # =============================================================================
+    LEARNING_RATE = 0.001  # 0.001 (mnist)
+    BATCH_SIZE = 4  # 32 (mnist), 8 for wgan-gp uji
     IMAGE_SIZE = 18
     CHANNELS_IMG = 1
     Z_DIM = 100
@@ -425,63 +619,153 @@ if __name__ == "__main__":
     FEATURES_GEN = 64
     CRITIC_ITERATIONS = 5
     LAMBDA_GP = 10
-    num_gen = 150
-    my_dpi = 96 # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
-    
-# =============================================================================
-#     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/most_sample/' #for most labels
-#     gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/N4/gen_wgangpUJI-1000-0_001_4.pt'
-#     disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/N4/disc_wgangpUJI-1000-0_001_4.pt'
-#     
-#     wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
-#             FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-# =============================================================================
-# =============================================================================
-#     Pretraining on server side
-# =============================================================================
-# =============================================================================
-#     
-#     unique_loc = ['trainingData_F1Sa'] # 'trainingData_F1Sb','trainingData_F2Sa','trainingData_F2Sb'
-#     gen_saved_state = '/home/wayne/N4/gen_wgangpUJI-1000-0_001_4.pt'
-#     disc_saved_state = '/home/wayne/N4/disc_wgangpUJI-1000-0_001_4.pt'
-#     for loc in range(len(unique_loc)):
-#         
-#         data_dir = '/home/wayne/N4/images/train_only/'+unique_loc[loc]
-#         save_state = '/home/wayne/N4/wgan_model_states/'+unique_loc[loc]
-#     
-#         if not os.path.exists(save_state):
-#             os.makedirs(save_state)
-#         NUM_EPOCHS = 500
-#         label_dir = label_directory(data_dir)
-# 
-#         for i in range(len(label_dir)):    
-#             curr_label = label_dir[i].split('\\')
-#             save_state = '/home/wayne/N4/wgan_model_states/'+unique_loc[loc]+'/'+str(curr_label[-1])+'.pt'
-#     
-#             wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, 
-#                               CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
-# =============================================================================
-    
-            
-# =============================================================================
-#   Generating images from model states
-# =============================================================================
-# =============================================================================
-#     unique_loc = ['trainingData_F1Sa','trainingData_F1Sb','trainingData_F2Sa','trainingData_F2Sb']
-#     for loc in range(len(unique_loc)):
-#         data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/train_only/'+unique_loc[loc]
-#         gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP/N4/images/wgan/'+unique_loc[loc]
-#         saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/model_state/N4/wgan_model_states/'+unique_loc[loc]
-#         if not os.path.exists(gen_img_dir):
-#             os.makedirs(gen_img_dir)
-#         label_dir = label_directory(data_dir)
-#         for i in range(len(label_dir)):    
-#             curr_label = label_dir[i].split('\\')
-#             save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
-#             generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
-# =============================================================================
+    num_gen = 400
+    my_dpi = 96  # Can be found using this link https://www.infobyip.com/detectmonitordpi.php
+    data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/most_sample/'  # for most labels
+    gen_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/gen_most_sample.pt'
+    disc_saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/model_state/N4/WGAN-GP/disc_most_sample.pt'
 
-    split_img()
+    wgan_gp_train(gen_saved_state, disc_saved_state, data_dir, LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS, IMAGE_SIZE, CHANNELS_IMG, Z_DIM, FEATURES_CRITIC,
+            FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+
+
+    # =============================================================================
+    #     3. WGAN-GP pre-train for each RP
+    # =============================================================================
+    # unique_loc = ["b2f3"]
+    # # data_dir = "/home/SEANGLIDET/uji/images/original/train_only/"+unique_loc
+    # # saved_state = "/home/SEANGLIDET/uji/model_state/WGAN-GP/"+unique_loc
+    # # gen_saved_state = '/home/SEANGLIDET/uji/model_state/WGAN-GP/gen_most_sample.pt'
+    # # disc_saved_state = '/home/SEANGLIDET/uji/model_state/WGAN-GP/disc_most_sample.pt'
+    # for u in unique_loc:
+    #     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/ori_rssi/'+u
+    #     saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/WGAN-GP/orssi/'+u
+    #
+    #
+    #     if not os.path.exists(saved_state):
+    #         os.makedirs(saved_state)
+    #     NUM_EPOCHS = 500
+    #     label_dir = label_directory(data_dir)
+    #
+    #
+    #     for i in range(67,113):#len(label_dir)):
+    #         curr_label = label_dir[i].split("/")
+    #         curr_label = label_dir[i].split('\\') #for windows pc
+    #         save_state = saved_state + '/'+str(curr_label[-1])+'.pt'
+    #
+    #         wgan_gp_pretrain(save_state, gen_saved_state, disc_saved_state, label_dir[i], LEARNING_RATE, BATCH_SIZE, NUM_EPOCHS,
+    #                           CHANNELS_IMG, Z_DIM, FEATURES_CRITIC, FEATURES_GEN, CRITIC_ITERATIONS, LAMBDA_GP)
+
+
+
+    # =============================================================================
+    #     4. Generate images
+    # =============================================================================
+    # =============================================================================
+    # unique_loc = ["b1f0","b1f1","b1f2","b1f3"]
+    #
+    # for u in unique_loc:
+    #     data_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/ori_dirich/'+u
+    #     gen_img_dir = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/GAN/unfiltered/'+u
+    #     saved_state = 'C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/model_state/GAN+/'+u
+    #
+    #      #for individual gen
+    #     # if not os.path.exists(gen_img_dir):
+    #     #     os.makedirs(gen_img_dir)
+    #     # l = data_dir + "\\-7691.338399998844_4864928.212899998"
+    #     # save_state = saved_state + '/-7691.338399998844_4864928.212899998.pt'
+    #     # generate_wgan_img(num_gen, save_state, l, Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE, my_dpi, gen_img_dir)
+    #
+    #     label_dir = label_directory(data_dir)
+    #     for i in range(len(label_dir)):
+    #         curr_label = label_dir[i].split('\\')  # for windows pc
+    #         save_state = saved_state + '/' + str(curr_label[-1]) + '_gan+.pt'
+    #
+    #         generate_wgan_img(num_gen, save_state, label_dir[i], Z_DIM, FEATURES_GEN, CHANNELS_IMG, IMAGE_SIZE,
+    #                           my_dpi, gen_img_dir)
+
+
+    # =============================================================================
+    # =============================================================================
+    #   4. Filtering images
+    # =============================================================================
+
+    # Finding threshold by finding the max diff between original images
+
+    # unique_loc = "b1f0"
+    # img_dim = 23
+    # max_threshold = []
+    #
+    # csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/max_threshold/"
+    # ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/train_only/"+unique_loc
+    # curr_labels = os.listdir(ori_dir)
+    # for k in curr_labels:
+    #     max_threshold.append([k, abs_diff_ori(ori_dir+"/"+k, img_dim)])
+    #     df = pd.DataFrame(max_threshold, columns = ["labels", "max_threshold"])
+    #     df.to_csv(csv_dir+unique_loc+".csv", index=False)
+
+    #Filtering generated images with local threshold
+
+    # bidd = ["b1f0","b1f1","b1f2","b1f3"]
+    # for bid in bidd:
+    #     ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/ori_rssi/" + bid + "/"
+    #     curr_labels = os.listdir(ori_dir)
+    #
+    #     img_dim = 23
+    #     gen_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/WGAN-GP+rssi/unfiltered/" + bid + "/"
+    #     threshold_df = pd.read_csv("C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/max_threshold/" + bid + ".csv")
+    #     new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/WGAN-GP+rssi/filtered/" + bid + "/"
+    #     size = []
+    #     # for individual filter
+    #     # lb = "-7474.607500001788_4864866.886100002"
+    #     # ori_diff = threshold_df[threshold_df["labels"] == lb]
+    #     # ori_diff = ori_diff.iloc[0, 1]
+    #     # df = abs_diff_gen(ori_dir + lb, gen_dir + lb, img_dim, ori_diff)
+    #     # size.append(len(df))
+    #     # for k in range(len(df)):
+    #     #     shutil.copy(gen_dir + lb + "/" + df[k], new_dir + lb + '/b' + df[k])
+    #
+    #     for i in range(len(curr_labels)):
+    #         ori_diff = threshold_df[threshold_df["labels"] == curr_labels[i]]
+    #         ori_diff = ori_diff.iloc[0, 1]
+    #         df = abs_diff_gen(ori_dir + curr_labels[i], gen_dir + curr_labels[i], img_dim, ori_diff)
+    #         size.append(len(df))
+    #         for k in range(len(df)):
+    #             if not os.path.exists(new_dir + curr_labels[i]):
+    #                 os.makedirs(new_dir + curr_labels[i])
+    #             shutil.copy(gen_dir + curr_labels[i] + "/" + df[k], new_dir + curr_labels[i] + '/' + df[k])
+    #     print(size)
+
+    #Filtering with overall threshold
+
+    # bid = ['floor-1','floor1','floor2']#["b0f0","b0f1", "b0f2", "b0f3", "b1f0","b1f1", "b1f2", "b1f3","b2f0","b2f1", "b2f2", "b2f3", "b2f4"]
+    # csv_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/max_threshold/"
+    # othreshold = overall_threshold(bid,csv_dir)
+    # print(othreshold)
+    # bid = ["floor2"]
+    # for b in bid:
+    #     ori_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/train_img/" + b + "_train/"
+    #     curr_labels = os.listdir(ori_dir)
+    #
+    #     img_dim = 19
+    #     gen_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/GAN+/unfiltered/" + b + "/"
+    #     new_dir = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/NG/images/GAN+/filtered/" + b + "/"
+    #     size = []
+    #
+    #
+    #     for i in range(len(curr_labels)):
+    #         df = abs_diff_gen(ori_dir + curr_labels[i], gen_dir + curr_labels[i], img_dim, othreshold)
+    #
+    #         size.append(len(df))
+    #         for k in range(len(df)):
+    #             if not os.path.exists(new_dir + curr_labels[i]):
+    #                 os.makedirs(new_dir + curr_labels[i])
+    #             shutil.copy(gen_dir + curr_labels[i] + "/" + df[k], new_dir + curr_labels[i] + '/' + df[k])
+    #     print(b, size)
+
+
+
+
 
 
 

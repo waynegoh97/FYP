@@ -53,8 +53,10 @@ def max_rssi(train_csv_dir,test_csv_dir):
     test_df = pd.read_csv(test_csv_dir, header = 0)
     train_df = train_df.replace(100,-110)
     test_df = test_df.replace(100,-110)
-    train_rssi = train_df.iloc[:,:520].to_numpy()
-    test_rssi = test_df.iloc[:,:520].to_numpy()
+    train_rssi = train_df.iloc[:,:301].to_numpy()
+    test_rssi = test_df.iloc[:,:301].to_numpy()
+
+
     if train_rssi.max() > test_rssi.max():
         max_rssi = train_rssi.max()
     else:
@@ -108,7 +110,7 @@ def train_valid_split(train_csv, fid, bid, save_path):
     train.to_csv(save_path + "/b" + str(bid) + "f" + str(fid) + "_train.csv", index=False)
     valid.to_csv(save_path + "/b" + str(bid) + "f" + str(fid) + "_valid.csv", index=False)
 
-def preprocess_dirichlet(csv_file, fid, bid, num_ap):
+def preprocess_dirichlet(csv_file, num_ap):
     '''
     Obtain dictionary of csv file, where dict = {(longitude,latitude): [[sample1][sample2]]}
     Parameters
@@ -124,14 +126,17 @@ def preprocess_dirichlet(csv_file, fid, bid, num_ap):
     '''
     #Dataset
     df = pd.read_csv(csv_file, header=0)
-    unique_loc = df.groupby(["LONGITUDE", "LATITUDE"]).size().reset_index().rename(columns={0: 'count'})
+    unique_loc = df.groupby(["x", "y"]).size().reset_index().rename(columns={0: 'count'})
+    #unique_loc = df.groupby(["LONGITUDE", "LATITUDE"]).size().reset_index().rename(columns={0: 'count'})
     labels = np.array(unique_loc.iloc[:,0:2])
     data_map = {} #keys = (longitude, latitude), access by sample_map[labels[0][0],labels[0][1]]
     for label in labels:
-        rp = df[(df["LONGITUDE"] == label[0]) & (df["LATITUDE"] == label[1])]
+        rp = df[(df["x"] == label[0]) & (df["y"] == label[1])]
+        #rp = df[(df["LONGITUDE"] == label[0]) & (df["LATITUDE"] == label[1])]
         rp = np.array(rp.iloc[:,:num_ap])
         data_map[label[0],label[1]] = rp
     return data_map
+
 
 if __name__ == "__main__":
 
@@ -158,68 +163,86 @@ if __name__ == "__main__":
     ##################################################################################################################
 
     ###### Generating training and validation csv dataset ######
-    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
+
     # bid = 2
     # fid = 4
-    # save_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/"
+    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/preprocessed/"+fid+"_train.csv"
+    # save_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/preprocessed/"
+    #
     # train_valid_split(train_csv, fid, bid, save_path)
     ##################################################################################################################
 
     ###### Generating training and validation image dataset ######
     # fid = 0
     # bid = 0
-    # num_ap = 520
-    # img_dim = 23
-    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/original/b"+str(bid)+"f"+str(fid)+"_train.csv"
-    # valid_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/original/b"+str(bid)+"f"+str(fid)+"_valid.csv"
+    # num_ap = 301
+    # img_dim = 18
+    #
+    # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/preprocessed/"+fid+"_train.csv"
+    # valid_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/preprocessed/"+fid+"_valid.csv"
     # train_csv_overall = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
     # test_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-testData.csv"
     #
     # train_dict = preprocess(train_csv, fid, bid, num_ap)
     # valid_dict = preprocess(valid_csv, fid, bid, num_ap)
     #
-    # train_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/train"
-    # valid_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/original/valid"
-    #
+    # train_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/train/"
+    # valid_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/valid/"
     # max_rssi = max_rssi(train_csv_overall, test_csv)
     # train_path = train_path +"/b"+str(bid)+"f"+str(fid)
     # valid_path = valid_path +"/b"+str(bid)+"f"+str(fid)
-    # # generate_image(train_dict, img_dim, num_ap, max_rssi, train_path)
+    # generate_image(train_dict, img_dim, num_ap, max_rssi, train_path)
     # generate_image(valid_dict, img_dim, num_ap, max_rssi, valid_path)
     ##################################################################################################################
 
-    ###### Generating Dirichlet images ######
-    dir_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/rssi-based/b2f4.csv"
-    train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
-    test_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-testData.csv"
-    fid = 4
-    bid = 2
-    num_ap = 520
-    img_dim = 23
+    ###### Generating Dirichlet/RSSI-based images ######
 
-    dir_dict = preprocess_dirichlet(dir_csv, fid, bid, num_ap)
-    dir_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/rssi-based/"
-
-    max_rssi = max_rssi(train_csv, test_csv)
-    print(max_rssi)
-    # dir_path = dir_path +"/b"+str(bid)+"f"+str(fid)
+    # fid = 2
+    # bid = 2
+    # num_ap = 301
+    # img_dim = 18
+    #
+    # # dir_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/csv_files/GAN+/b" + str(bid) + "f" + str(fid) + ".csv"
+    # # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-trainingData.csv"
+    # # test_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/UJI/csv_files/UJI-testData.csv"
+    # # dir_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/NG/csv_files/GAN+/floor-1.csv"
+    # dir_path = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/original/dirichlet/"
+    # dir_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/preprocessed/F1Sa_dirichlet.csv"
+    #
+    # # train_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/trainingData_F1Sa.csv"
+    # # test_csv = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/csv_dataset/N4/csv_files/testingData_F1Sb.csv"
+    #
+    # dir_dict = preprocess_dirichlet(dir_csv, num_ap)
+    #
+    # max_rssi = 6#max_rssi(train_csv, test_csv)
+    #
+    # dir_path = dir_path +'F1Sa'#"/b"+str(bid)+"f"+str(fid)
+    #
+    #
     # generate_image(dir_dict, img_dim, num_ap, max_rssi, dir_path)
 
 
+
     ###### Combining image folders ######
-    # folder1 = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/ori_rssi-based/b2f4/"
-    # folder2 = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/uji_data/images/rssi-based/b2f4/"
-    #
-    # labels = os.listdir(folder1)
-    # for i in range(len(labels)):
-    #     init_img_name = os.listdir(folder1+labels[i])
-    #     new_len = 150 -  len(init_img_name)
-    #     img_name = os.listdir(folder2+labels[i])
-    #     #rand = random.sample(range(400), new_len)
-    #
-    #     for img in range(new_len):
-    #         #shutil.copy(folder2 + labels[i] + "/" + img_name[rand[img]], folder1 + labels[i] + '/wgan_' + img_name[rand[img]])
-    #         shutil.copy(folder2 + labels[i] + "/" + img_name[img], folder1 + labels[i] + '/rssi_' + img_name[img])
+    bid = ['F1Sa','F1Sb','F2Sa','F2Sb']#["b0f0","b0f1", "b0f2", "b0f3", "b1f0","b1f1", "b1f2", "b1f3","b2f0","b2f1", "b2f2", "b2f3", "b2f4"]
+
+    for b in bid:
+        folder1 = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/localisation300/"+b+"/"
+        folder2 = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/image_dataset/N4/images/extendedGAN+/WGAN-GP/filtered/"+b+"/"
+
+
+        labels = os.listdir(folder1)
+        for i in range(len(labels)):
+            init_img_name = os.listdir(folder1+labels[i])
+
+
+            new_len = 300 -  len(init_img_name)
+            img_name = os.listdir(folder2+labels[i])
+            #rand = random.sample(range(400), new_len)
+
+            for img in range(new_len):
+                #shutil.copy(folder2 + labels[i] + "/" + img_name[rand[img]], folder1 + labels[i] + '/wgan_' + img_name[rand[img]])
+                shutil.copy(folder2 + labels[i] + "/" + img_name[img], folder1 + labels[i] + '/wgan_' + img_name[img])
 
     ###### Find most sample for the building ######
     # csv_file = "C:/Users/noxtu/LnF_FYP2122S1_Goh-Yun-Bo-Wayne/FYP_data/personal/csv_files/UJI-trainingData.csv"
